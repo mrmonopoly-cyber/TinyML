@@ -1,0 +1,16 @@
+
+(* comment 
+   in many 
+   lines *)
+
+// line comment
+
+let f x y = (x, y) in
+let g x = f x x
+in ()
+
+
+
+
+
+
