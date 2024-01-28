@@ -58,11 +58,12 @@ let rec eval_expr (venv : value env) (e : expr) : value =
     | Var x -> lookup venv x
     
     | LetIn (b,e) ->
-        _,s,_,e1 = b
+        let _,s,_,e1 = b
         let v1 = eval_expr venv e1
-        let venv' (s, v1) :: venv
+        let venv' = (s, v1) :: venv
         eval_expr venv' e
-    | IfThenElse (eg,e1,None) -> eval_if_else eg e1 VLit(LUnit)
+
+    | IfThenElse (eg,e1,None) -> eval_if_else eg e1 (VLit(LUnit))
 
     | IfThenElse (eg,e1,Some(e2)) -> eval_if_else eg e1 (eval_expr venv e2)
 
@@ -88,5 +89,5 @@ let rec eval_expr (venv : value env) (e : expr) : value =
         let v1 = eval_expr venv e1
         let cur_eval_op = eval_op v1 v2
         match op with
-        | "!" -> cur_eval_op (bool->bool(!))
-        | "-" -> cur_eval_op (int->int(-))
+        | "!" -> cur_eval_op (bool_bool(!))
+        | "-" -> cur_eval_op (int_int(-))
