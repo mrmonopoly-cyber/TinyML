@@ -12,7 +12,21 @@ let type_error fmt = throw_formatted TypeError fmt
 type subst = (tyvar * ty) list
 
 // TODO implement this
-let unify (t1 : ty) (t2 : ty) : subst = []
+let rec unify (t1 : ty) (t2 : ty) : subst = 
+    match t1,t2 with
+    | TyName ts1, TyName ts2 -> 
+        if ts1 = ts2 
+        then []
+        else type_error "impossible to create a substitution failed inference for: %O %O " ts1 ts2
+    | TyName t, TyVar a | TyVar a, TyName t -> 
+        [a, (TyName t)]
+    | TyArrow(t1,t2), TyArrow(t3,t4) -> 
+        (unify t1 t3) @ (unify t2 t4)
+    
+    | TyTuple(t1h::t1t) , TyTuple (t2h::t2t) -> 
+        (unify t1h t2h) @ (unify (TyTuple t1t) (TyTuple t2t))
+    
+    | _ -> type_error "debug"
 
 // TODO implement this
 let apply_subst (t : ty) (s : subst) : ty = t
@@ -22,27 +36,28 @@ let compose_subst (s1 : subst) (s2 : subst) : subst = s1 @ s2
 
 // TODO implement this
 let rec freevars_ty t = 
-    match t with
-    //| TyName t -> 
+    match t with 
     | TyArrow(ta,tb) -> 
         let fta = freevars_ty ta
         let ftb = freevars_ty tb
-        List.append fta ftb      
+        Set.union fta ftb      
     | TyTuple(thead::ttail) -> 
-        List.append (freevars_ty thead) (freevars_ty (TyTuple(ttail))) 
+        Set.union (freevars_ty thead) (freevars_ty (TyTuple(ttail))) 
 
-    | TyName _ -> [] 
+    | TyName _ -> Set.empty 
 
-    | TyVar _ -> [t]
+    | TyVar _ -> Set.empty.Add(t)
     | _ -> type_error "debug"
-        
+    
 
 // TODO implement this
-let freevars_scheme (Forall (tvs, t)) = Set.empty
+let freevars_scheme (Forall (tvs, t)) =
+    let full_ty_list = freevars_ty t
+    let conv = Set.map (fun x -> TyVar(x)) tvs
+    Set.difference conv full_ty_list
 
 // TODO implement this
 let freevars_scheme_env env = Set.empty
-
 
 // basic environment: add builtin operators at will
 //
@@ -69,7 +84,17 @@ let rec typeinfer_expr (env : scheme env) (e : expr) : ty * subst =
     | Lit (LChar _) -> TyChar, [] 
     | Lit LUnit -> TyUnit, []
 
-        
+    | Lambda(s,Some(typ),e) ->
+        let env' = (s,Forall(Set.empty,typ)) :: env
+        let te2,sub = typeinfer_expr env' e
+        (TyArrow(typ,te2)), sub
+    
+    | IfThenElse(eg,e1,Some e2) ->
+        let tg,subg = typeinfer_expr env eg
+        if tg<>TyBool then type_error "wrong type guard if then else: %O" tg
+        let t1,sub1 = typeinfer_expr env eg
+        t1,[]
+
 
     | BinOp (e1, op, e2) ->
         typeinfer_expr env (App (App (Var op, e1), e2))
