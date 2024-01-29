@@ -21,7 +21,21 @@ let apply_subst (t : ty) (s : subst) : ty = t
 let compose_subst (s1 : subst) (s2 : subst) : subst = s1 @ s2
 
 // TODO implement this
-let rec freevars_ty t = Set.empty
+let rec freevars_ty t = 
+    match t with
+    //| TyName t -> 
+    | TyArrow(ta,tb) -> 
+        let fta = freevars_ty ta
+        let ftb = freevars_ty tb
+        List.append fta ftb      
+    | TyTuple(thead::ttail) -> 
+        List.append (freevars_ty thead) (freevars_ty (TyTuple(ttail))) 
+
+    | TyName _ -> [] 
+
+    | TyVar _ -> [t]
+    | _ -> type_error "debug"
+        
 
 // TODO implement this
 let freevars_scheme (Forall (tvs, t)) = Set.empty
@@ -33,13 +47,15 @@ let freevars_scheme_env env = Set.empty
 // basic environment: add builtin operators at will
 //
 
-let gamma0 = [
-    ("+", TyArrow (TyInt, TyArrow (TyInt, TyInt)))
-    ("-", TyArrow (TyInt, TyArrow (TyInt, TyInt)))
-    ("*", TyArrow (TyInt, TyArrow (TyInt, TyInt)))
-    ("/", TyArrow (TyInt, TyArrow (TyInt, TyInt)))
-    ("<", TyArrow (TyInt, TyArrow (TyInt, TyBool)))
-]
+//let gamma0 = [
+//    ("+", TyArrow (TyInt, TyArrow (TyInt, TyInt)))
+//    ("-", TyArrow (TyInt, TyArrow (TyInt, TyInt)))
+//    ("*", TyArrow (TyInt, TyArrow (TyInt, TyInt)))
+//    ("/", TyArrow (TyInt, TyArrow (TyInt, TyInt)))
+//    ("<", TyArrow (TyInt, TyArrow (TyInt, TyBool)))
+//]
+
+let gamma0 = []
 
 // type inference
 //
@@ -52,6 +68,8 @@ let rec typeinfer_expr (env : scheme env) (e : expr) : ty * subst =
     | Lit (LString _) -> TyString, []
     | Lit (LChar _) -> TyChar, [] 
     | Lit LUnit -> TyUnit, []
+
+        
 
     | BinOp (e1, op, e2) ->
         typeinfer_expr env (App (App (Var op, e1), e2))
