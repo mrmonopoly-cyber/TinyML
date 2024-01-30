@@ -17,7 +17,7 @@ let rec unify (t1 : ty) (t2 : ty) : subst =
     | TyName ts1, TyName ts2 -> 
         if ts1 = ts2 
         then []
-        else type_error "impossible to create a substitution failed inference for: %O %O " ts1 ts2
+        else type_error "ambiguous type for expression: %O %O " ts1 ts2
     | TyName t, TyVar a | TyVar a, TyName t -> 
         [a, (TyName t)]
     | TyArrow(t1,t2), TyArrow(t3,t4) -> 
@@ -29,7 +29,26 @@ let rec unify (t1 : ty) (t2 : ty) : subst =
     | _ -> type_error "debug"
 
 // TODO implement this
-let apply_subst (t : ty) (s : subst) : ty = t
+let rec apply_subst (t : ty) (s : subst) : ty = 
+   
+    match t,s with
+    | TyName e,_ -> ty
+    | Tyvar _,((tyv,tyt) :: tail) -> 
+        if ty = tyv 
+        then TyArrow (ty, tyt)
+        else apply_subst ty tail
+    | Tyvar _, [] -> ty
+    | TyArrow(t1,t2),_ -> 
+        let rect1 = apply_subst t1 s
+        let rect2 = apply_subst t2 s
+        TyArrow (rect1, rect2)
+
+    | TyTuple(tylist) ->
+        let newlist = List.map (fun x -> apply_subst x s) tylist
+        TyTuple newlist
+
+
+
 
 // TODO implement this
 let compose_subst (s1 : subst) (s2 : subst) : subst = s1 @ s2
@@ -57,7 +76,12 @@ let freevars_scheme (Forall (tvs, t)) =
     Set.difference conv full_ty_list
 
 // TODO implement this
-let freevars_scheme_env env = Set.empty
+let rec freevars_scheme_env (env : scheme env) = 
+    match env with
+    | head :: tail -> 
+        let _,sc = head
+        Set.union  (freevars_scheme sc) (freevars_scheme_env tail)
+    | _ -> Set.empty
 
 // basic environment: add builtin operators at will
 //
@@ -75,6 +99,51 @@ let gamma0 = []
 // type inference
 //
 
+let rec apply_subst_env (env : scheme env) (sub : subst) : (scheme env) = 
+    match env with
+    | (var_x, Forall (vars, tyt)) :: tail ->
+        let new_sch = Forall(vars,(apply_subst tyt sub))
+        (var_x, new_sch) :: (apply_subst_env tail sub)
+    | _ -> []
+
+let if_else_e2 env e2 sub5 inf_fun  =
+    match e2 with
+    | Some e2 -> 
+        let t2,sub6 =  inf_fun env e2
+        let sub7 = compose_subst sub6 sub5
+        t2,sub7
+    | _ -> TyUnit,[]
+
+
+let ty_if_else env eg e1 e2 inf_fun= 
+    let tg,sub1 = inf_fun env eg
+    if tg<>TyBool then type_error "wrong type guard if then else: %O" tg
+        
+    let sub2 = unify tg TyBool
+    let sub3 = compose_subst sub2 sub1
+        
+    let env = apply_subst_env env sub3
+        
+    let t1,sub4 = inf_fun env e1
+    let sub5 = compose_subst sub4 sub3
+        
+    let env = apply_subst_env env sub5
+    
+    let t2,sub6 = if_else_e2 env e2 sub5 inf_fun
+    
+    let sub7 = compose_subst sub6 sub5
+    let sub8 = unify (apply_subst t1 sub7) (apply_subst t2 sub7)
+
+    let tf = apply_subst t1 sub8 
+        
+    let sub9 = compose_subst sub8 sub7 
+
+    TyArrow (TyArrow (tg, t1), t2), sub9
+
+let lookup (env : scheme env) (var : TyVar) : scheme = 
+    Forall (Set.empty, TyUnit)
+
+
 let rec typeinfer_expr (env : scheme env) (e : expr) : ty * subst =
     match e with
     | Lit (LInt _) -> TyInt, [] 
@@ -84,17 +153,15 @@ let rec typeinfer_expr (env : scheme env) (e : expr) : ty * subst =
     | Lit (LChar _) -> TyChar, [] 
     | Lit LUnit -> TyUnit, []
 
+    //| Var(s) ->
+
     | Lambda(s,Some(typ),e) ->
         let env' = (s,Forall(Set.empty,typ)) :: env
         let te2,sub = typeinfer_expr env' e
         (TyArrow(typ,te2)), sub
     
-    | IfThenElse(eg,e1,Some e2) ->
-        let tg,subg = typeinfer_expr env eg
-        if tg<>TyBool then type_error "wrong type guard if then else: %O" tg
-        let t1,sub1 = typeinfer_expr env eg
-        t1,[]
-
+    | IfThenElse(eg,e1, e2) ->
+        ty_if_else env eg e1 e2 typeinfer_expr
 
     | BinOp (e1, op, e2) ->
         typeinfer_expr env (App (App (Var op, e1), e2))
