@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "dgSpecHash": "XZQn/j03/EzXeWy9cnnuT2VhQKAamn59WqsYuJ6qlqSNdan7xsC4nxXiCAG/kTV5mbRqo2BXP8lYANjVzGfm4Q==",
+  "success": true,
+  "projectFilePath": "/home/mr_monopoly/Downloads/fun/tinyMl/tinyMl.fsproj",
+  "expectedPackageFiles": [
+    "/home/mr_monopoly/.nuget/packages/fsharp.core/8.0.101/fsharp.core.8.0.101.nupkg.sha512"
+  ],
+  "logs": []
+}

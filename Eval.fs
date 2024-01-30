@@ -10,7 +10,7 @@ open Ast
 exception NotFound
 
 let lookup env x = 
-    let _, v = List.find (fun (x', v) -> x = x') env
+    let _, v = List.find (fun (x', _) -> x = x') env
     v
 
 type op_fun =

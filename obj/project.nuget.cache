@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "dgSpecHash": "jIBhyKUrt0pjW1qSnMmMRRnPeYQMiXgoCOCHoM2DLUzccaKggmZgSAkH28jjYK6bZEOlyrJyUb3euHRsWMCH1Q==",
+  "success": true,
+  "projectFilePath": "/home/mr_monopoly/Alberto/programmazione/f#/fun/TinyML.fsproj",
+  "expectedPackageFiles": [
+    "/home/mr_monopoly/.nuget/packages/fsharp.core/8.0.101/fsharp.core.8.0.101.nupkg.sha512",
+    "/home/mr_monopoly/.nuget/packages/fslexyacc/11.2.0/fslexyacc.11.2.0.nupkg.sha512",
+    "/home/mr_monopoly/.nuget/packages/fslexyacc.runtime/11.2.0/fslexyacc.runtime.11.2.0.nupkg.sha512"
+  ],
+  "logs": []
+}

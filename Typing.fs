@@ -1,4 +1,4 @@
-﻿(*
+﻿(*as
 * TinyML
 * Typing.fs: typing algorithms
 *)
@@ -32,18 +32,17 @@ let rec unify (t1 : ty) (t2 : ty) : subst =
 let rec apply_subst (t : ty) (s : subst) : ty = 
    
     match t,s with
-    | TyName e,_ -> ty
-    | Tyvar _,((tyv,tyt) :: tail) -> 
-        if ty = tyv 
-        then TyArrow (ty, tyt)
-        else apply_subst ty tail
-    | Tyvar _, [] -> ty
+    | TyName _,_ -> t
+    | TyVar tv,((tyv,tyt) :: tail) -> 
+        if tv = tyv 
+        then TyArrow (t, tyt)
+        else apply_subst t tail
+    | TyVar _, [] -> t
     | TyArrow(t1,t2),_ -> 
         let rect1 = apply_subst t1 s
         let rect2 = apply_subst t2 s
         TyArrow (rect1, rect2)
-
-    | TyTuple(tylist) ->
+    | TyTuple tylist, _ ->
         let newlist = List.map (fun x -> apply_subst x s) tylist
         TyTuple newlist
 
@@ -115,7 +114,7 @@ let if_else_e2 env e2 sub5 inf_fun  =
     | _ -> TyUnit,[]
 
 
-let ty_if_else env eg e1 e2 inf_fun= 
+let ty_if_else env eg e1 e2 inf_fun : ty * subst= 
     let tg,sub1 = inf_fun env eg
     if tg<>TyBool then type_error "wrong type guard if then else: %O" tg
         
@@ -138,11 +137,37 @@ let ty_if_else env eg e1 e2 inf_fun=
         
     let sub9 = compose_subst sub8 sub7 
 
-    TyArrow (TyArrow (tg, t1), t2), sub9
+    tf,sub9
 
-let lookup (env : scheme env) (var : TyVar) : scheme = 
-    Forall (Set.empty, TyUnit)
+let rec refresh (vars : tyvar Set) (t : ty) : ty =
+    let cur_rec_ref = refresh vars
+    match t with
+    | TyName _ -> t
+    | TyVar n -> 
+        if Set.exists (fun x -> x = n) vars
+        then 
+            let freshv = (Set.count vars) + 1
+            TyVar(freshv)
+        else t
+    | TyArrow(t1,t2) -> 
+        TyArrow ((cur_rec_ref t1),(cur_rec_ref t2))
+    | TyTuple (list) ->
+        let list = List.map (cur_rec_ref) list
+        TyTuple list
 
+let rec lookup (env : scheme env) (var : string) : ty= 
+    match env with
+    | (vars,Forall(tyset, typ)):: tail ->
+        if vars = var 
+        then refresh tyset typ
+        else lookup tail var
+    | [] -> type_error "type of variable %O not found during type checking" var
+
+
+
+let inst (sch : scheme) : ty =
+    match sch with
+    | Forall(vars, t) -> refresh vars t
 
 let rec typeinfer_expr (env : scheme env) (e : expr) : ty * subst =
     match e with
@@ -153,15 +178,47 @@ let rec typeinfer_expr (env : scheme env) (e : expr) : ty * subst =
     | Lit (LChar _) -> TyChar, [] 
     | Lit LUnit -> TyUnit, []
 
-    //| Var(s) ->
+    | Lambda(str, Some t, e) ->
+        let env = (str,Forall(Set.empty,t)) :: env
+        let te,s = typeinfer_expr env e
+        TyArrow (t,te),s
 
-    | Lambda(s,Some(typ),e) ->
-        let env' = (s,Forall(Set.empty,typ)) :: env
-        let te2,sub = typeinfer_expr env' e
-        (TyArrow(typ,te2)), sub
+    | Lambda(str, None, e) ->
+        let newvar = TyVar 0
+        let env = (str,Forall(Set.empty,newvar)) :: env
+        let te,s = typeinfer_expr env e
+        let t1 = apply_subst newvar s
+        TyArrow (t1,te),s
+
+    | Var(s) ->
+        let typs = lookup env s
+        typs, []
+
+    // | LetIn((recb, varn, vart, var_exp),exp) ->
+        // let t1 
+    // | App(e1,e2) ->
+    //     let t1,s1 = typeinfer_expr env e1
+    //     let env = apply_subst_env env s1
+    //     let r2,s2 = typeinfer_expr env e2
+    //     let new_var = Tyvar 0
+    //     let new_var = refresh  new_var
+
     
     | IfThenElse(eg,e1, e2) ->
         ty_if_else env eg e1 e2 typeinfer_expr
+
+    | Tuple(elist) ->
+        let rec tuple_inference (env : scheme env) (sub : subst) (el : expr list) : ty list * subst =
+            let env = apply_subst_env env sub 
+            match el with
+            | head :: tail ->
+                let t,s = typeinfer_expr env head 
+                let tl,s = tuple_inference env s tail
+                (t::tl),s
+            | _ -> [],sub
+
+        let tyl,s = tuple_inference env [] elist
+        (TyTuple tyl),s
 
     | BinOp (e1, op, e2) ->
         typeinfer_expr env (App (App (Var op, e1), e2))
@@ -200,7 +257,7 @@ let rec typecheck_expr (env : ty env) (e : expr) : ty =
         let te = typecheck_expr env' e
         TyArrow (t, te)
 
-    | Lambda (x, None, e) ->
+    | Lambda (_, None, _) ->
         type_error "unannotated lambdas are not supported by the type checker"
 
     | App (e1, e2) ->
