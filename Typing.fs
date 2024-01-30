@@ -21,14 +21,35 @@ let apply_subst (t : ty) (s : subst) : ty = t
 let compose_subst (s1 : subst) (s2 : subst) : subst = s1 @ s2
 
 // TODO implement this
-let rec freevars_ty t = Set.empty
+let rec freevars_ty (t:ty) : tyvar Set = 
+    match t with 
+    | TyName _ -> Set.empty
+    | TyVar t -> Set.empty.Add t
+    | TyArrow (t1,t2) -> Set.union (freevars_ty t1) (freevars_ty t2)
+    | TyTuple (list) -> 
+        match list with
+        | head :: tail ->
+            Set.union (freevars_ty head) (freevars_ty (TyTuple tail))
+        | [] -> Set.empty
+
 
 // TODO implement this
-let freevars_scheme (Forall (tvs, t)) = Set.empty
+let freevars_scheme (Forall (tvs, t)) : tyvar Set = 
+    let ftv_ty = freevars_ty t
+    Set.difference ftv_ty tvs
 
 // TODO implement this
-let freevars_scheme_env env = Set.empty
+let rec freevars_scheme_env (env : scheme env) : tyvar Set= 
+    match env with
+    | (_,sch):: tail ->
+        Set.union (freevars_scheme sch) (freevars_scheme_env tail)
+    | [] -> Set.empty
 
+let gen (env : scheme env) (t : ty) : scheme = 
+    let ftv_ty = freevars_ty t
+    let ftv_env = freevars_scheme_env env
+    let pol_var = Set.difference ftv_ty ftv_env
+    Forall(pol_var,t)
 
 // basic environment: add builtin operators at will
 //

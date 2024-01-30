@@ -8,6 +8,15 @@ module TinyML.Main
 open System
 open FSharp.Common
 open TinyML.Ast
+open TinyML.Typing
+
+let rec ty_env_to_scheme_env (ty_env : ty env) (sc_env :scheme env): scheme env = 
+    match ty_env with
+    | (str,typ) :: tail ->
+        let conv_scheme = gen sc_env typ
+        let sc_env = [str,conv_scheme]
+        ty_env_to_scheme_env tail sc_env
+    | _ -> sc_env   
 
 let parse_from_TextReader rd filename parser = Parsing.parse_from_TextReader SyntaxError rd filename (1, 1) parser Lexer.tokenize Parser.tokenTagToTokenId
     
@@ -16,7 +25,8 @@ let interpret_expr tenv venv e =
     printfn "AST:\t%A\npretty:\t%s" e (pretty_expr e)
     #endif
     // TODO you can invoke the typeinfer_expr here
-    let t = Typing.typecheck_expr tenv e
+    // let t = Typing.typecheck_expr tenv e
+    let t,_ = Typing.typeinfer_expr (ty_env_to_scheme_env tenv []) e
     #if DEBUG
     printfn "type:\t%s" (pretty_ty t)
     #endif
@@ -55,7 +65,8 @@ let main_interactive () =
                     "it", interpret_expr tenv venv e
 
                 | IBinding (_, x, _, _ as b) ->
-                    let t, v = interpret_expr tenv venv (LetIn (b, Var x)) // TRICK: put the variable itself as body after the in
+                    let t, v = interpret_expr tenv venv (LetIn (b, Var x)) 
+                    // TRICK: put the variable itself as body after the in
                     // update global environments
                     tenv <- (x, t) :: tenv
                     venv <- (x, v) :: venv
