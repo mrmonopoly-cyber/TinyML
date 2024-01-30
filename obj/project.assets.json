@@ -238,11 +238,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "/home/mr_monopoly/Alberto/programmazione/f#/fun/TinyML.fsproj",
+      "projectUniqueName": "/home/mr_monopoly/Alberto/programmazione/f#/TinyML/TinyML.fsproj",
       "projectName": "TinyML",
-      "projectPath": "/home/mr_monopoly/Alberto/programmazione/f#/fun/TinyML.fsproj",
+      "projectPath": "/home/mr_monopoly/Alberto/programmazione/f#/TinyML/TinyML.fsproj",
       "packagesPath": "/home/mr_monopoly/.nuget/packages/",
-      "outputPath": "/home/mr_monopoly/Alberto/programmazione/f#/fun/obj/",
+      "outputPath": "/home/mr_monopoly/Alberto/programmazione/f#/TinyML/obj/",
       "projectStyle": "PackageReference",
       "configFilePaths": [
         "/home/mr_monopoly/.nuget/NuGet/NuGet.Config"
