@@ -16,7 +16,8 @@ let interpret_expr tenv venv e =
     printfn "AST:\t%A\npretty:\t%s" e (pretty_expr e)
     #endif
     // TODO you can invoke the typeinfer_expr here
-    let t = Typing.typecheck_expr tenv e
+    //let t = Typing.typecheck_expr tenv e
+    let t,_ = Typing.typeinfer_expr tenv e
     #if DEBUG
     printfn "type:\t%s" (pretty_ty t)
     #endif
@@ -55,9 +56,10 @@ let main_interactive () =
                     "it", interpret_expr tenv venv e
 
                 | IBinding (_, x, _, _ as b) ->
-                    let t, v = interpret_expr tenv venv (LetIn (b, Var x)) // TRICK: put the variable itself as body after the in
+                    let t, v = interpret_expr tenv venv (LetIn (b, Var x)) 
+                    // TRICK: put the variable itself as body after the in
                     // update global environments
-                    tenv <- (x, t) :: tenv
+                    tenv <- (x, Forall(set([]),t)) :: tenv
                     venv <- (x, v) :: venv
                     x, (t, v)
 

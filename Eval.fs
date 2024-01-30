@@ -13,28 +13,30 @@ let lookup env x =
     let _, v = List.find (fun (x', v) -> x = x') env
     v
 
-let eval_if_else eg e1 v2 =
-    let vg = eval_expr venv eg
-    let v1 = eval_expr venv e1
-    match vg with 
-    | True -> v1
-    | False -> v2
-
 type op_fun =
-    | int_int_bool of (int->int->bool)
-    | int_int_int of (int->int->int)
-    | bool_bool_bool of (bool->bool->bool)
-    | bool_bool of (bool->bool)
-    | int_bool of (int->bool)
-
+    | Int_int_bool of (int->int->bool)
+    | Int_int_int of (int->int->int)
+    | Bool_bool_bool of (bool->bool->bool)
+    | Bool_bool of (bool->bool)
+    | Int_bool of (int->bool)
 
 let eval_op v1 v2 op_f =
-    match op_f with
-    | (int_int_bool op) -> VLit(LBool(op v1 v2))
-    | (int_int_int op) -> VLit(LInt(op v1 v2))
-    | (bool_bool_bool op) -> VLit(LBool(op v1 v2))
-    | (bool_bool op) -> VLit(LBool(op v1))
-    | (int_bool op) -> VLit(LInt(op v1))
+    match v1,v2,op_f with
+    | VLit(LInt(v1)), Some(VLit(LInt(v2))), (Int_int_bool op) -> VLit(LBool(op v1 v2))
+    | VLit(LInt(v1)), Some(VLit(LInt(v2))), (Int_int_int op) -> VLit(LInt(op v1 v2))
+    | VLit(LBool(v1)), Some(VLit(LBool(v2))), (Bool_bool_bool op) -> VLit(LBool(op v1 v2))
+    | VLit(LBool(v1)), None , (Bool_bool op) -> VLit(LBool(op v1))
+    | VLit(LInt(v1)), None ,(Int_bool op) -> VLit(LBool(op v1))
+    | _,_,_ ->  unexpected_error "impossible case"
+
+    
+let eval_if_else (vg:value) v1 v2 =
+    match vg with 
+    | VLit(LBool(g)) -> 
+        match g with
+        | true -> v1
+        | false -> v2
+    | _ ->  unexpected_error "impossible case"
 
 // evaluator
 //
@@ -63,31 +65,41 @@ let rec eval_expr (venv : value env) (e : expr) : value =
         let venv' = (s, v1) :: venv
         eval_expr venv' e
 
-    | IfThenElse (eg,e1,None) -> eval_if_else eg e1 (VLit(LUnit))
+    | IfThenElse (eg,e1,None) -> 
+        let vg = eval_expr venv eg
+        let v1 = eval_expr venv e1
+        eval_if_else vg v1 (VLit(LUnit))
 
-    | IfThenElse (eg,e1,Some(e2)) -> eval_if_else eg e1 (eval_expr venv e2)
+    | IfThenElse (eg,e1,Some(e2)) -> 
+        let vg = eval_expr venv eg
+        let v1 = eval_expr venv e1
+        let v2 = eval_expr venv e2
+        eval_if_else vg v1 v2
 
-    | Tuple(el) -> List.map (eval_expr venv) el
+    | Tuple(el) -> VTuple(List.map (eval_expr venv) el)
 
     | BinOp (e1,op,e2) ->
         let v1 = eval_expr venv e1
-        let v2 = eval_expr venv e2
-        let cur_eval_op = eval_op v1 v2
+        let v2 = Some(eval_expr venv e2)
         match op with
-        | "+" -> cur_eval_op (int_int_int (+))
-        | "-" -> cur_eval_op (int_int_int (-))
-        | "*" -> cur_eval_op (int_int_int (*))
-        | "/" -> cur_eval_op (int_int_int (/))
-        | "%" -> cur_eval_op (int_int_int (%))
-        | "=" -> cur_eval_op (int_int_bool (=))
-        | ">=" -> cur_eval_op (int_int_bool (>=))
-        | "<=" -> cur_eval_op (int_int_bool (<=))
-        | "and" -> cur_eval_op (int_int_bool (&&))
-        | "or" -> cur_eval_op (int_int_bool (||))
+        | "+" -> eval_op v1 v2 (Int_int_int (+))
+        | "-" -> eval_op v1 v2 (Int_int_int (-))
+        | "*" -> eval_op v1 v2 (Int_int_int (*))
+        | "/" -> eval_op v1 v2 (Int_int_int (/))
+        | "%" -> eval_op v1 v2 (Int_int_int (%))
+        | "=" -> eval_op v1 v2 (Int_int_bool (=))
+        | ">=" -> eval_op v1 v2  (Int_int_bool (>=))
+        | "<=" -> eval_op v1 v2 (Int_int_bool (<=))
+        | "and" -> eval_op v1 v2 (Bool_bool_bool (&&))
+        | "or" -> eval_op v1 v2 (Bool_bool_bool (||))
+        | _ -> unexpected_error "impossible case"
 
     | UnOp(op,e1) ->
         let v1 = eval_expr venv e1
-        let cur_eval_op = eval_op v1 v2
         match op with
-        | "!" -> cur_eval_op (bool_bool(!))
-        | "-" -> cur_eval_op (int_int(-))
+        | "not" -> eval_op v1 None (Bool_bool(not))
+        | "-" -> eval_op (VLit(LInt(0))) (Some(v1)) (Int_int_int(-))
+        | _ -> unexpected_error "impossible case"
+
+
+   
