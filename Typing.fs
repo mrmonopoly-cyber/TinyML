@@ -12,14 +12,57 @@ let type_error fmt = throw_formatted TypeError fmt
 type subst = (tyvar * ty) list
 
 // TODO implement this
-let unify (t1 : ty) (t2 : ty) : subst = []
-
-// TODO implement this
-let apply_subst (t : ty) (s : subst) : ty = t
-
-// TODO implement this
 let compose_subst (s1 : subst) (s2 : subst) : subst = s1 @ s2
 
+// TODO implement this
+let rec unify (t1 : ty) (t2 : ty) : subst = 
+    match t1,t2 with
+    | TyName c1, TyName c2 -> 
+        if c1 = c2 
+        then []
+        else type_error "invalid case unification function with type %O %O" t1 t2
+    | TyVar a, t | t , TyVar a ->
+        [a,t]
+    | TyArrow(t1,t2), TyArrow(t3,t4) ->
+        compose_subst (unify t1 t3) (unify t2 t4)
+    | TyTuple (head1::tail1), TyTuple(head2::tail2) ->
+        let res_h = unify head1 head2
+        let res_tail = unify (TyTuple tail1) (TyTuple tail2)
+        res_h @ res_tail
+    | _ -> type_error "invalid case unification function with type %O %O" t1 t2
+        
+// TODO implement this
+let rec apply_subst_ty (t : ty) (s : subst) : ty = 
+    let rec exist (tyv : tyvar)  (li : subst) =
+        match li with
+        | ((tyvl,typ)::tail) -> 
+            if  tyvl = tyv 
+            then typ 
+            else exist tyv tail
+        | [] -> TyVar tyv 
+
+    let cur_apply x = apply_subst_ty x s
+    match t with
+    | TyName _ -> t
+    | TyVar a -> exist a s
+    | TyArrow(t1,t2) -> 
+        TyArrow((cur_apply t1),(cur_apply t2))
+    | TyTuple (tyl) ->
+        let res_l = List.map (cur_apply) tyl
+        TyTuple res_l
+
+let apply_subst_scheme (Forall(ty_s,typ): scheme ) (s : subst) : scheme =
+    let s = s //TODO alberto
+    let res_ty = apply_subst_ty typ s
+    Forall(ty_s,res_ty)
+
+    
+let rec apply_subst_env (env : scheme env) (s : subst) : scheme env = 
+    match env with
+    | (str,sch)::tail ->
+        (str,(apply_subst_scheme sch s))::(apply_subst_env tail s)
+    | [] -> []
+    
 // TODO implement this
 let rec freevars_ty (t:ty) : tyvar Set = 
     match t with 
@@ -51,10 +94,34 @@ let gen (env : scheme env) (t : ty) : scheme =
     let pol_var = Set.difference ftv_ty ftv_env
     Forall(pol_var,t)
 
-let lookup_scheme_env (env : scheme env) (x : string) : scheme =
-    Forall (Set.empty,TyUnit)
+let rec lookup_scheme_env (env : scheme env) (x : string) : scheme =
+    match env with
+    | (str,sch) :: tail ->
+        if str = x 
+        then sch
+        else lookup_scheme_env tail x
+    | [] -> type_error "variable %O not declared" x
 
-let inst (sch : scheme) : ty = TyUnit
+let mutable new_var: tyvar = 0
+
+let rec re (ty_set : tyvar Set) (ty_in : ty) : ty = 
+    let cur_re = re ty_set
+    match ty_in with
+    | TyName _ -> ty_in
+    | TyVar a -> 
+        if Set.exists (fun x -> x = a) ty_set 
+        then 
+            new_var <- (new_var + 1)
+            TyVar (new_var - 1)
+        else ty_in
+    | TyArrow(t1,t2) -> 
+        TyArrow ((cur_re t1),(cur_re t2))
+    | TyTuple(tylist) ->
+        let fr_list = List.map (cur_re) tylist
+        TyTuple fr_list
+        
+
+let inst (Forall (tvs,t): scheme) : ty =  re tvs t
 // basic environment: add builtin operators at will
 //
 
@@ -94,12 +161,113 @@ let rec typeinfer_expr (env : scheme env) (e : expr) : ty * subst =
         let sch_ty = inst sch
         sch_ty,[]
 
+    | Lambda(str,t,e) ->
+        let a = TyVar(0)
+        let l_scheme = Forall(Set.empty,a) 
+        let env = (str,l_scheme) :: env
+        let t2,s1 = typeinfer_expr env e
+        let t1 = apply_subst_ty a s1
+        match t with
+        | Some ti -> 
+            if ti<>t1 then type_error "lmabda: expected type %O, given type %O" ti t1
+            else TyArrow (t1,t2),s1
+        | None -> TyArrow(t1,t2),s1
+
+    | App(e1,e2) ->
+        let t1,s1 = typeinfer_expr env e1
+        let env = apply_subst_env env s1
+        let t2,s2 = typeinfer_expr env e2
+        let fresh_var = TyVar new_var
+        new_var <- new_var + 1
+        let s3 = unify t1 (TyArrow(t2,fresh_var))
+        let tf = apply_subst_ty fresh_var s3
+        let sf = compose_subst s3 s2
+        tf,sf
+
+    | IfThenElse(e1,e2,e3) ->
+        let else_branch e env s5 =
+            match e with
+            | Some e3 ->
+                let t3,s6 = typeinfer_expr env e3
+                let s7 = compose_subst s6 s5
+                t3,s7
+            | None -> 
+                TyUnit,s5
+
+        let t1,s1 = typeinfer_expr env e1
+        let s2 = unify t1 TyBool
+        let s3 = compose_subst s2 s1
+        let env = apply_subst_env env s3
+        let t2,s4 = typeinfer_expr env e2
+        let s5 = compose_subst s4 s3
+        let env = apply_subst_env env s5
+        let t3,s7 = else_branch e3 env s5
+        let s8 = unify (apply_subst_ty t2 s7) (apply_subst_ty t3 s7)
+        let ty_res = apply_subst_ty t2 s8
+        let s_res = compose_subst s8 s7
+        ty_res,s_res
+    
+    | Tuple(e_list) ->
+        let rec tu_lis (e_list : expr list) (s:subst) : (ty list) * subst = 
+            match e_list with
+            | (head::tail) ->
+                let env = apply_subst_env env s
+                let ti,si = typeinfer_expr env head
+                let tlj,sj = tu_lis tail si 
+                (ti :: tlj),sj
+            | [] -> [],s
+
+        let ts,s = tu_lis e_list []
+        TyTuple(ts),s
+    
+
+    | LetIn((rec_b,n_var,var_t,e_let),e_in) ->
+        let bool_rec = 
+            match rec_b with
+            | true -> 
+                let fresh_var = TyVar new_var
+                new_var <- new_var + 1
+                let context = n_var,Forall(Set.empty,fresh_var)
+                let env = context :: env
+                env,fresh_var
+            | false -> env,TyUnit
+
+        let env,fresh_var = bool_rec
+        let t1,s1 = typeinfer_expr env e_let
+        match var_t with
+        | Some t -> if t1<>t then type_error "conflicting type, expected %O, given %O" var_t t
+        | None -> ()
+        let env = apply_subst_env env s1
+        let scheme1 = gen env t1
+        let env = (n_var,scheme1):: env
+        let t2,s2 = typeinfer_expr env e_in
+        let s3 = unify fresh_var (apply_subst_ty t1 s1)
+
+        if rec_b 
+        then 
+            let s4 = compose_subst s3 (compose_subst s2 s1)
+            t2,s4
+        else
+            t2,s3
+
+
     | BinOp (e1, op, e2) ->
         typeinfer_expr env (App (App (Var op, e1), e2))
 
-    // TODO complete this implementation
+    | UnOp(op,e) ->
+        let t1,s1 = typeinfer_expr env e
+        match op with
+        | "not" ->
+            if t1<>TyBool 
+            then type_error "expected TyBool given %O" t1
+            else TyArrow(t1,TyBool),s1
+        | "-" ->
+            if t1<>TyInt
+            then type_error "expected TyInt given %O" t1
+            else TyArrow(t1,TyInt),s1
+        | _ -> type_error "invalid unary operator %O" op
 
-    | _ -> unexpected_error "typeinfer_expr: unsupported expression: %s [AST: %A]" (pretty_expr e) e
+    // | _ -> unexpected_error "typeinfer_expr: unsupported expression: %s [AST: %A]" (pretty_expr e) e
 
 // type checker
 //
