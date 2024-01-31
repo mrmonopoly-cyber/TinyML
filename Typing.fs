@@ -10,26 +10,6 @@ open Ast
 let type_error fmt = throw_formatted TypeError fmt
 
 type subst = (tyvar * ty) list
-
-// TODO implement this
-let compose_subst (s1 : subst) (s2 : subst) : subst = s1 @ s2
-
-// TODO implement this
-let rec unify (t1 : ty) (t2 : ty) : subst = 
-    match t1,t2 with
-    | TyName c1, TyName c2 -> 
-        if c1 = c2 
-        then []
-        else type_error "invalid case unification function with type %O %O" t1 t2
-    | TyVar a, t | t , TyVar a ->
-        [a,t]
-    | TyArrow(t1,t2), TyArrow(t3,t4) ->
-        compose_subst (unify t1 t3) (unify t2 t4)
-    | TyTuple (head1::tail1), TyTuple(head2::tail2) ->
-        let res_h = unify head1 head2
-        let res_tail = unify (TyTuple tail1) (TyTuple tail2)
-        res_h @ res_tail
-    | _ -> type_error "invalid case unification function with type %O %O" t1 t2
         
 // TODO implement this
 let rec apply_subst_ty (t : ty) (s : subst) : ty = 
@@ -63,6 +43,31 @@ let rec apply_subst_env (env : scheme env) (s : subst) : scheme env =
         (str,(apply_subst_scheme sch s))::(apply_subst_env tail s)
     | [] -> []
     
+// TODO implement this
+let rec compose_subst (s1 : subst) (s2 : subst) : subst = 
+    match s1 with 
+    | (tv,tp) :: tail ->
+        let fst_sub = (tv, (apply_subst_ty tp s2)) ::  (compose_subst tail s2)
+        fst_sub @ s2
+    | _ -> []
+
+// TODO implement this
+let rec unify (t1 : ty) (t2 : ty) : subst = 
+    match t1,t2 with
+    | TyName c1, TyName c2 -> 
+        if c1 = c2 
+        then []
+        else type_error "invalid case unification function with type %O %O" t1 t2
+    | TyVar a, t | t , TyVar a ->
+        [a,t]
+    | TyArrow(t1,t2), TyArrow(t3,t4) ->
+        compose_subst (unify t1 t3) (unify t2 t4)
+    | TyTuple (head1::tail1), TyTuple(head2::tail2) ->
+        let res_h = unify head1 head2
+        let res_tail = unify (TyTuple tail1) (TyTuple tail2)
+        res_h @ res_tail
+    | _ -> type_error "invalid case unification function with type %O %O" t1 t2
+
 // TODO implement this
 let rec freevars_ty (t:ty) : tyvar Set = 
     match t with 
