@@ -51,6 +51,10 @@ let gen (env : scheme env) (t : ty) : scheme =
     let pol_var = Set.difference ftv_ty ftv_env
     Forall(pol_var,t)
 
+let lookup_scheme_env (env : scheme env) (x : string) : scheme =
+    Forall (Set.empty,TyUnit)
+
+let inst (sch : scheme) : ty = TyUnit
 // basic environment: add builtin operators at will
 //
 
@@ -65,6 +69,7 @@ let gamma0 = [
 // type inference
 //
 
+
 let rec typeinfer_expr (env : scheme env) (e : expr) : ty * subst =
     match e with
     | Lit (LInt _) -> TyInt, [] 
@@ -73,6 +78,21 @@ let rec typeinfer_expr (env : scheme env) (e : expr) : ty * subst =
     | Lit (LString _) -> TyString, []
     | Lit (LChar _) -> TyChar, [] 
     | Lit LUnit -> TyUnit, []
+
+    | Var varty ->
+        let rec exist (l : scheme env) (var : string) : bool =
+                match l with
+                | (vart,_)::tail ->
+                    if vart = var 
+                    then true
+                    else exist tail var
+                | [] -> false
+
+        if not ( exist env varty) then type_error "variable %O not found" varty
+
+        let sch = lookup_scheme_env env varty
+        let sch_ty = inst sch
+        sch_ty,[]
 
     | BinOp (e1, op, e2) ->
         typeinfer_expr env (App (App (Var op, e1), e2))
