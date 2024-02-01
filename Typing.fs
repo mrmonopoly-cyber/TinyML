@@ -118,7 +118,7 @@ let rec re (ty_set : tyvar Set) (ty_in : ty) : ty =
     | TyVar a -> 
         if Set.exists (fun x -> x = a) ty_set 
         then 
-            new_var <- (new_var + 1)
+            new_var <- (new_var + 1) //fix 
             TyVar (new_var - 1)
         else ty_in
     | TyArrow(t1,t2) -> 
@@ -169,13 +169,14 @@ let rec typeinfer_expr (env : scheme env) (e : expr) : ty * subst =
         sch_ty,[]
 
     | Lambda(str,t,e) ->
-        let a = TyVar(0)
-        let l_scheme = Forall(Set.empty,a) 
+        let a = TyVar(new_var)
+        new_var <- new_var + 1
+        let l_scheme = Forall(Set.empty,a)
         let env = (str,l_scheme) :: env
         let t2,s1 = typeinfer_expr env e
         let t1 = apply_subst_ty a s1
         match t with
-        | Some ti -> 
+        | Some ti ->
             match ti with
             | TyVar _ -> TyArrow (t1,t2),s1
             | _ -> type_error "lmabda: expected type %O, given type %O" ti t1
@@ -199,7 +200,7 @@ let rec typeinfer_expr (env : scheme env) (e : expr) : ty * subst =
                 let t3,s6 = typeinfer_expr env e3
                 let s7 = compose_subst s6 s5
                 t3,s7
-            | None -> 
+            | None ->
                 TyUnit,s5
 
         let t1,s1 = typeinfer_expr env e1
@@ -216,12 +217,12 @@ let rec typeinfer_expr (env : scheme env) (e : expr) : ty * subst =
         ty_res,s_res
     
     | Tuple(e_list) ->
-        let rec tu_lis (e_list : expr list) (s:subst) : (ty list) * subst = 
+        let rec tu_lis (e_list : expr list) (s:subst) : (ty list) * subst =
             match e_list with
             | (head::tail) ->
                 let env = apply_subst_env env s
                 let ti,si = typeinfer_expr env head
-                let tlj,sj = tu_lis tail si 
+                let tlj,sj = tu_lis tail si
                 (ti :: tlj),sj
             | [] -> [],s
 
@@ -230,9 +231,9 @@ let rec typeinfer_expr (env : scheme env) (e : expr) : ty * subst =
     
 
     | LetIn((rec_b,n_var,var_t,e_let),e_in) ->
-        let bool_rec = 
+        let bool_rec =
             match rec_b with
-            | true -> 
+            | true ->
                 let fresh_var = TyVar new_var
                 new_var <- new_var + 1
                 let context = n_var,Forall(Set.empty,fresh_var)
@@ -256,7 +257,7 @@ let rec typeinfer_expr (env : scheme env) (e : expr) : ty * subst =
         let fresh_var = rec_op_fv
         let s3 = unify fresh_var (apply_subst_ty t1 s1)
 
-        if rec_b 
+        if rec_b
         then 
             let s4 = compose_subst s3 (compose_subst s2 s1)
             t2,s4
@@ -294,7 +295,7 @@ let rec typeinfer_expr (env : scheme env) (e : expr) : ty * subst =
         let num_bool_exp op = ope_fu op ma_int TyBool
         let bool_exp op = ope_fu op ma_bool TyBool
 
-        match op with 
+        match op with
         | "+" as op -> num_exp op
         | "-" as op -> num_exp op
         | "*" as op -> num_exp op
@@ -312,7 +313,7 @@ let rec typeinfer_expr (env : scheme env) (e : expr) : ty * subst =
         let t1,s1 = typeinfer_expr env e
         match op with
         | "not" ->
-            if t1<>TyBool 
+            if t1<>TyBool
             then type_error "expected TyBool given %O" t1
             else TyArrow(t1,TyBool),s1
         | "-" ->
