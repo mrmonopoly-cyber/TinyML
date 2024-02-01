@@ -32,10 +32,12 @@ let rec apply_subst_ty (t : ty) (s : subst) : ty =
         TyTuple res_l
 
 let apply_subst_scheme (Forall(ty_s,typ): scheme ) (s : subst) : scheme =
-    let s = s //TODO alberto
-    let res_ty = apply_subst_ty typ s
-    Forall(ty_s,res_ty)
+    
+    let predicate ((tv,_): tyvar * ty) : bool = not (Set.exists (fun x -> x = tv) ty_s)
+    let res_ty  : subst = List.filter (predicate) s
+    let res_sub = apply_subst_ty typ res_ty
 
+    Forall(ty_s,res_sub)
     
 let rec apply_subst_env (env : scheme env) (s : subst) : scheme env = 
     match env with
