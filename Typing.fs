@@ -250,13 +250,14 @@ let rec typeinfer_expr (env : scheme env) (e : expr) : ty * subst =
         let scheme1 = gen env t1
         let env = (n_var,scheme1):: env
         let t2,s2 = typeinfer_expr env e_in
+        
         let rec_op_fv =
             match rec_b with
-            | true -> fresh_var
-            | false -> t1
-        let fresh_var = rec_op_fv
-        let s3 = unify fresh_var (apply_subst_ty t1 s1)
-
+            | true -> fresh_var,unify fresh_var (apply_subst_ty t1 s1)
+            | false -> t2,(compose_subst s2 s1)
+        
+        let fresh_var,s3 = rec_op_fv
+        
         if rec_b
         then 
             let s4 = compose_subst s3 (compose_subst s2 s1)
