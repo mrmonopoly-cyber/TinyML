@@ -272,6 +272,12 @@ let rec typeinfer_expr (env : scheme env) (e : expr) : ty * subst =
             if not(c t2) then type_error "%s operator, given %O" op t2
             ty_res, (compose_subst s2 s1)
 
+        let ope_eq op c ty_res =
+            let t1,s1 = typeinfer_expr env e1
+            let t2,s2 = typeinfer_expr env e2
+            if not(c t1 t2) then type_error "%s operator, given %O" op t1 
+            ty_res, (compose_subst s2 s1)
+
         let ma_int t =
             match t with
             | TyInt _ | TyVar _ -> true
@@ -282,12 +288,9 @@ let rec typeinfer_expr (env : scheme env) (e : expr) : ty * subst =
             | TyBool _ | TyVar _ -> true
             | _ -> false
 
-        let ma_mix_same t  =
-            if ((ma_bool t) && (ma_bool t)) || ((ma_int t) && (ma_int t))
-            then true
-            else false
+
         let num_exp op = ope_fu op ma_int TyInt
-        let mix_num_bool_exp op = ope_fu op ma_mix_same TyBool
+        let mix_num_bool_exp op = ope_eq op (fun x -> fun y -> (ma_int x && ma_int y) || (ma_bool x && ma_bool y) ) TyBool
         let num_bool_exp op = ope_fu op ma_int TyBool
         let bool_exp op = ope_fu op ma_bool TyBool
 
