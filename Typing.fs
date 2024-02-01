@@ -176,8 +176,9 @@ let rec typeinfer_expr (env : scheme env) (e : expr) : ty * subst =
         let t1 = apply_subst_ty a s1
         match t with
         | Some ti -> 
-            if ti<>t1 then type_error "lmabda: expected type %O, given type %O" ti t1
-            else TyArrow (t1,t2),s1
+            match ti with
+            | TyVar _ -> TyArrow (t1,t2),s1
+            | _ -> type_error "lmabda: expected type %O, given type %O" ti t1
         | None -> TyArrow(t1,t2),s1
 
     | App(e1,e2) ->
@@ -248,6 +249,11 @@ let rec typeinfer_expr (env : scheme env) (e : expr) : ty * subst =
         let scheme1 = gen env t1
         let env = (n_var,scheme1):: env
         let t2,s2 = typeinfer_expr env e_in
+        let rec_op_fv =
+            match rec_b with
+            | true -> fresh_var
+            | false -> t1
+        let fresh_var = rec_op_fv
         let s3 = unify fresh_var (apply_subst_ty t1 s1)
 
         if rec_b 
@@ -259,24 +265,43 @@ let rec typeinfer_expr (env : scheme env) (e : expr) : ty * subst =
 
 
     | BinOp (e1, op, e2) ->
-        let ope_fu op ty ty_res =
+        let ope_fu op c ty_res =
             let t1,s1 = typeinfer_expr env e1
             let t2,s2 = typeinfer_expr env e2
-            if t1<>ty then type_error "%s operator expects %O, given %O" op ty t1 
-            if t2<>ty then type_error "%s operator expects %O, given %O" op ty t2
+            if not(c t1) then type_error "%s operator, given %O" op t1 
+            if not(c t2) then type_error "%s operator, given %O" op t2
             ty_res, (compose_subst s2 s1)
+
+        let ma_int t =
+            match t with
+            | TyInt _ | TyVar _ -> true
+            | _ -> false
+
+        let ma_bool t =
+            match t with
+            | TyBool _ | TyVar _ -> true
+            | _ -> false
+
+        let ma_mix_same t  =
+            if ((ma_bool t) && (ma_bool t)) || ((ma_int t) && (ma_int t))
+            then true
+            else false
+        let num_exp op = ope_fu op ma_int TyInt
+        let mix_num_bool_exp op = ope_fu op ma_mix_same TyBool
+        let num_bool_exp op = ope_fu op ma_int TyBool
+        let bool_exp op = ope_fu op ma_bool TyBool
+
         match op with 
-        | "+" as op -> ope_fu op TyInt TyInt
-        | "-" as op -> ope_fu op TyInt TyInt
-        | "*" as op -> ope_fu op TyInt TyInt
-        | "/" as op -> ope_fu op TyInt TyInt
-        | "%" as op -> ope_fu op TyInt TyInt
-        | "=b" as op -> ope_fu op TyBool TyBool
-        | "=i" as op -> ope_fu op TyInt TyInt
-        | ">=" as op -> ope_fu op TyInt TyBool
-        | "<=" as op -> ope_fu op TyInt TyBool
-        | "and" as op -> ope_fu op TyInt TyBool
-        | "or" as op -> ope_fu op TyInt TyBool
+        | "+" as op -> num_exp op
+        | "-" as op -> num_exp op
+        | "*" as op -> num_exp op
+        | "/" as op -> num_exp op
+        | "%" as op -> num_exp op
+        | "=" as op -> mix_num_bool_exp op
+        | ">=" as op -> num_bool_exp op
+        | "<=" as op -> num_bool_exp op
+        | "and" as op -> bool_exp op
+        | "or" as op -> bool_exp op
         | _ -> unexpected_error "not supported operator"
 
 
