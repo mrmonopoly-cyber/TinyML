@@ -259,7 +259,25 @@ let rec typeinfer_expr (env : scheme env) (e : expr) : ty * subst =
 
 
     | BinOp (e1, op, e2) ->
-        typeinfer_expr env (App (App (Var op, e1), e2))
+        let ope_fu op ty ty_res =
+            let t1,s1 = typeinfer_expr env e1
+            let t2,s2 = typeinfer_expr env e2
+            if t1<>ty then type_error "%s operator expects %O, given %O" op ty t1 
+            if t2<>ty then type_error "%s operator expects %O, given %O" op ty t2
+            TyArrow (TyArrow(t1,t2), ty_res), (compose_subst s2 s1)
+        match op with 
+        | "+" as op -> ope_fu op TyInt TyInt
+        | "-" as op -> ope_fu op TyInt TyInt
+        | "*" as op -> ope_fu op TyInt TyInt
+        | "/" as op -> ope_fu op TyInt TyInt
+        | "%" as op -> ope_fu op TyInt TyInt
+        | "=" as op -> ope_fu op TyInt TyBool
+        | ">=" as op -> ope_fu op TyInt TyBool
+        | "<=" as op -> ope_fu op TyInt TyBool
+        | "and" as op -> ope_fu op TyInt TyBool
+        | "or" as op -> ope_fu op TyInt TyBool
+        | _ -> unexpected_error "not supported operator"
+
 
     | UnOp(op,e) ->
         let t1,s1 = typeinfer_expr env e
