@@ -187,8 +187,8 @@ let rec typeinfer_expr (env : scheme env) (e : expr) : ty * subst =
         let fresh_var = TyVar new_var
         new_var <- new_var + 1
         let s3 = unify t1 (TyArrow(t2,fresh_var))
-        let tf = apply_subst_ty fresh_var s3
         let sf = compose_subst s3 s2
+        let tf = apply_subst_ty fresh_var s3
         tf,sf
 
     | IfThenElse(e1,e2,e3) ->
@@ -210,8 +210,8 @@ let rec typeinfer_expr (env : scheme env) (e : expr) : ty * subst =
         let env = apply_subst_env env s5
         let t3,s7 = else_branch e3 env s5
         let s8 = unify (apply_subst_ty t2 s7) (apply_subst_ty t3 s7)
-        let ty_res = apply_subst_ty t2 s8
         let s_res = compose_subst s8 s7
+        let ty_res = apply_subst_ty t2 s8
         ty_res,s_res
     
     | Tuple(e_list) ->
@@ -264,14 +264,15 @@ let rec typeinfer_expr (env : scheme env) (e : expr) : ty * subst =
             let t2,s2 = typeinfer_expr env e2
             if t1<>ty then type_error "%s operator expects %O, given %O" op ty t1 
             if t2<>ty then type_error "%s operator expects %O, given %O" op ty t2
-            TyArrow (TyArrow(t1,t2), ty_res), (compose_subst s2 s1)
+            ty_res, (compose_subst s2 s1)
         match op with 
         | "+" as op -> ope_fu op TyInt TyInt
         | "-" as op -> ope_fu op TyInt TyInt
         | "*" as op -> ope_fu op TyInt TyInt
         | "/" as op -> ope_fu op TyInt TyInt
         | "%" as op -> ope_fu op TyInt TyInt
-        | "=" as op -> ope_fu op TyInt TyBool
+        | "=b" as op -> ope_fu op TyBool TyBool
+        | "=i" as op -> ope_fu op TyInt TyInt
         | ">=" as op -> ope_fu op TyInt TyBool
         | "<=" as op -> ope_fu op TyInt TyBool
         | "and" as op -> ope_fu op TyInt TyBool

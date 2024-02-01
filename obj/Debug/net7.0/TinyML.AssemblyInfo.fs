@@ -10,7 +10,7 @@ open System.Reflection
 [<assembly: System.Reflection.AssemblyCompanyAttribute("TinyML")>]
 [<assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")>]
 [<assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")>]
-[<assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+cdf3f7314b9049605344fd87de15970aa19c0064")>]
+[<assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+8ff20342c1d6409bf07977c13cf1d65330a30b1d")>]
 [<assembly: System.Reflection.AssemblyProductAttribute("TinyML")>]
 [<assembly: System.Reflection.AssemblyTitleAttribute("TinyML")>]
 [<assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")>]
