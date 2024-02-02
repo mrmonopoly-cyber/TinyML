@@ -118,7 +118,7 @@ let rec re (ty_set : tyvar Set) (ty_in : ty) : ty =
     | TyVar a -> 
         if Set.exists (fun x -> x = a) ty_set 
         then 
-            new_var <- (new_var + 1) //fix 
+            new_var <- (new_var + 1) 
             TyVar (new_var - 1)
         else ty_in
     | TyArrow(t1,t2) -> 
@@ -128,7 +128,10 @@ let rec re (ty_set : tyvar Set) (ty_in : ty) : ty =
         TyTuple fr_list
         
 
-let inst (Forall (tvs,t): scheme) : ty =  re tvs t
+let inst (Forall (tvs,t): scheme) : ty =  
+    if freevars_scheme (Forall (tvs,t)) <> Set.empty
+    then re tvs t
+    else t
 // basic environment: add builtin operators at will
 //
 
@@ -230,72 +233,25 @@ let rec typeinfer_expr (env : scheme env) (e : expr) : ty * subst =
         TyTuple(ts),s
     
 
-    | LetIn((rec_b,n_var,var_t,e_let),e_in) ->
-        let bool_rec =
-            match rec_b with
-            | true ->
-                let fresh_var = TyVar new_var
-                new_var <- new_var + 1
-                let context = n_var,Forall(Set.empty,fresh_var)
-                let env = context :: env
-                env,fresh_var
-            | false -> env,TyUnit
+    | LetIn((false,n_var,None,e_let),e_in) ->
 
-        let env,fresh_var = bool_rec
         let t1,s1 = typeinfer_expr env e_let
-        match var_t with
-        | Some t -> if t1<>t then type_error "conflicting type, expected %O, given %O" var_t t
-        | None -> ()
+        printf "t1 %O, s1 %O\n" t1 s1
         let env = apply_subst_env env s1
+        printf "env %O \n" env
         let scheme1 = gen env t1
+        printf "scheme1 %O \n" scheme1
         let env = (n_var,scheme1):: env
+        printf "env %O \n" env
         let t2,s2 = typeinfer_expr env e_in
-        
-        let rec_op_fv =
-            match rec_b with
-            | true -> fresh_var,unify fresh_var (apply_subst_ty t1 s1)
-            | false -> t2,(compose_subst s2 s1)
-        
-        let fresh_var,s3 = rec_op_fv
-        
-        if rec_b
-        then 
-            let s4 = compose_subst s3 (compose_subst s2 s1)
-            t2,s4
-        else
-            t2,s3
+        printf "t2 %O, s2 %O\n" t2 s2
+        let s3 = (compose_subst s2 s1)
+        printf "s3 %O \n" s3
+        t2,s3
 
 
     | BinOp (e1, op, e2) ->
-        let ope_fu op c ty_res =
-            let t1,s1 = typeinfer_expr env e1
-            let t2,s2 = typeinfer_expr env e2
-            if not(c t1) then type_error "%s operator, given %O" op t1 
-            if not(c t2) then type_error "%s operator, given %O" op t2
-            ty_res, (compose_subst s2 s1)
-
-        let ope_eq op c ty_res =
-            let t1,s1 = typeinfer_expr env e1
-            let t2,s2 = typeinfer_expr env e2
-            if not(c t1 t2) then type_error "%s operator, given %O" op t1 
-            ty_res, (compose_subst s2 s1)
-
-        let ma_int t =
-            match t with
-            | TyInt _ | TyVar _ -> true
-            | _ -> false
-
-        let ma_bool t =
-            match t with
-            | TyBool _ | TyVar _ -> true
-            | _ -> false
-
-
-        let num_exp op = ope_fu op ma_int TyInt
-        let mix_num_bool_exp op = ope_eq op (fun x -> fun y -> (ma_int x && ma_int y) || (ma_bool x && ma_bool y) ) TyBool
-        let num_bool_exp op = ope_fu op ma_int TyBool
-        let bool_exp op = ope_fu op ma_bool TyBool
-
+        
         match op with
         | "+" as op -> num_exp op
         | "-" as op -> num_exp op
