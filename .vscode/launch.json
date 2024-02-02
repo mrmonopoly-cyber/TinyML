@@ -1,0 +1,19 @@
+{
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "args": [],
+      "console": "internalConsole",
+      "cwd": "${workspaceFolder}",
+      "name": ".NET Core Launch (console)",
+      "preLaunchTask": "build",
+      "program": "${workspaceFolder}/bin/Debug/net7.0/TinyML.dll", //net7.0 is the value for the "TargetFramework" property inside the .fsproj file
+      "request": "launch",
+      "stopAtEntry": false,
+      "type": "coreclr",
+    }
+  ]
+}

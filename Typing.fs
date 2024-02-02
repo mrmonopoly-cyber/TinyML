@@ -51,6 +51,11 @@ let rec compose_subst (s1 : subst) (s2 : subst) : subst =
     | (tv,tp) :: tail ->
         let fst_sub = (tv, (apply_subst_ty tp s2)) :: (compose_subst tail s2)
         fst_sub @ s2
+        // fix cicli, conflitti 
+        // 'a -> int
+        // 'a -> bool
+        // 'a -> 'b
+        // 'a -> bool
     | _ -> []
 
 // TODO implement this
@@ -67,7 +72,7 @@ let rec unify (t1 : ty) (t2 : ty) : subst =
     | TyTuple (head1::tail1), TyTuple(head2::tail2) ->
         let res_h = unify head1 head2
         let res_tail = unify (TyTuple tail1) (TyTuple tail2)
-        res_h @ res_tail
+        compose_subst res_h res_tail
     | _ -> type_error "invalid case unification function with type %O %O" t1 t2
 
 // TODO implement this
@@ -122,16 +127,14 @@ let rec re (ty_set : tyvar Set) (ty_in : ty) : ty =
             TyVar (new_var - 1)
         else ty_in
     | TyArrow(t1,t2) -> 
-        TyArrow ((cur_re t1),(cur_re t2))
+        TyArrow ((cur_re t1),(cur_re t2)) //fix
     | TyTuple(tylist) ->
         let fr_list = List.map (cur_re) tylist
         TyTuple fr_list
         
 
 let inst (Forall (tvs,t): scheme) : ty =  
-    if freevars_scheme (Forall (tvs,t)) <> Set.empty
-    then re tvs t
-    else t
+    re tvs t
 // basic environment: add builtin operators at will
 //
 
@@ -181,7 +184,7 @@ let rec typeinfer_expr (env : scheme env) (e : expr) : ty * subst =
         match t with
         | Some ti ->
             match ti with
-            | TyVar _ -> TyArrow (t1,t2),s1
+            | TyVar _ -> TyArrow (t1,t2),s1 //fix
             | _ -> type_error "lmabda: expected type %O, given type %O" ti t1
         | None -> TyArrow(t1,t2),s1
 
@@ -225,16 +228,16 @@ let rec typeinfer_expr (env : scheme env) (e : expr) : ty * subst =
             | (head::tail) ->
                 let env = apply_subst_env env s
                 let ti,si = typeinfer_expr env head
-                let tlj,sj = tu_lis tail si
-                (ti :: tlj),sj
+                let tlj,sj = tu_lis tail (compose_subst si s)
+                (tlj @ [ti]),sj
             | [] -> [],s
 
         let ts,s = tu_lis e_list []
         TyTuple(ts),s
     
 
-    | LetIn((false,n_var,None,e_let),e_in) ->
-
+    | Let(n_var,t,e_let,e_in) ->
+        //fix t, rec
         let t1,s1 = typeinfer_expr env e_let
         let env = apply_subst_env env s1
         let scheme1 = gen env t1
@@ -253,14 +256,13 @@ let rec typeinfer_expr (env : scheme env) (e : expr) : ty * subst =
             let env = apply_subst_env env s3
             let t2,s4 = typeinfer_expr env e2
             let s5 = unify t2 ty
-            let s5 = compose_subst s5 (compose_subst s4 (compose_subst s3 s2))
-            let s6 = compose_subst s5 s4
+            let s6 = compose_subst s5 (compose_subst s4 s3)
             tyr,s6
             
         match op with
-        | "+" | "-" | "*" | "/" | "%" as op -> st_fun TyInt TyInt
-        | "and" | "or" as op -> TyBool TyBool
-        | ">=" | "<=" -> TyInt TyBool
+        | "+" | "-" | "*" | "/" | "%"  -> st_fun TyInt TyInt
+        | "and" | "or" -> st_fun TyBool TyBool
+        | ">=" | "<=" -> st_fun TyInt TyBool
         // | "=" as op -> mix_num_bool_exp op
         | _ -> unexpected_error "not supported operator"
 

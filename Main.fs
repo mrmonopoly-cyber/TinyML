@@ -8,6 +8,7 @@ module TinyML.Main
 open System
 open FSharp.Common
 open TinyML.Ast
+
 open TinyML.Typing
 
 let rec ty_env_to_scheme_env (ty_env : ty env) (sc_env :scheme env): scheme env = 
