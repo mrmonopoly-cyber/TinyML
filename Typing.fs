@@ -56,7 +56,7 @@ let rec compose_subst (s1 : subst) (s2 : subst) : subst =
         // 'a -> bool
         // 'a -> 'b
         // 'a -> bool
-    | _ -> []
+    | _ -> s2
 
 // TODO implement this
 let rec unify (t1 : ty) (t2 : ty) : subst = 
@@ -138,13 +138,13 @@ let inst (Forall (tvs,t): scheme) : ty =
 // basic environment: add builtin operators at will
 //
 
-let gamma0 = [
-    ("+", TyArrow (TyInt, TyArrow (TyInt, TyInt)))
-    ("-", TyArrow (TyInt, TyArrow (TyInt, TyInt)))
-    ("*", TyArrow (TyInt, TyArrow (TyInt, TyInt)))
-    ("/", TyArrow (TyInt, TyArrow (TyInt, TyInt)))
-    ("<", TyArrow (TyInt, TyArrow (TyInt, TyBool)))
-]
+let gamma0 = []
+//    ("+", TyArrow (TyInt, TyArrow (TyInt, TyInt)))
+//    ("-", TyArrow (TyInt, TyArrow (TyInt, TyInt)))
+//    ("*", TyArrow (TyInt, TyArrow (TyInt, TyInt)))
+//    ("/", TyArrow (TyInt, TyArrow (TyInt, TyInt)))
+//    ("<", TyArrow (TyInt, TyArrow (TyInt, TyBool)))
+
 
 // type inference
 //
