@@ -251,18 +251,31 @@ let rec typeinfer_expr (env : scheme env) (e : expr) : ty * subst =
 
 
     | BinOp (e1, op, e2) ->
+
         
         match op with
-        | "+" as op -> num_exp op
-        | "-" as op -> num_exp op
-        | "*" as op -> num_exp op
-        | "/" as op -> num_exp op
-        | "%" as op -> num_exp op
-        | "=" as op -> mix_num_bool_exp op
-        | ">=" as op -> num_bool_exp op
-        | "<=" as op -> num_bool_exp op
-        | "and" as op -> bool_exp op
-        | "or" as op -> bool_exp op
+        | "+" as op -> 
+            let t1,s1 = typeinfer_expr env e1
+            let s2 = unify t1 TyInt
+            printf "s2 %O \n" s2
+            let s3 = compose_subst s2 s1
+            let env = apply_subst_env env s3
+            printf "env %O \n" env
+            let t2,s4 = typeinfer_expr env e2
+            let s5 = unify t2 TyInt
+            printf "s2 %O \n" s5
+            let s6 = compose_subst s5 s4
+            TyInt,s6
+
+        // | "-" as op -> num_exp op
+        // | "*" as op -> num_exp op
+        // | "/" as op -> num_exp op
+        // | "%" as op -> num_exp op
+        // | "=" as op -> mix_num_bool_exp op
+        // | ">=" as op -> num_bool_exp op
+        // | "<=" as op -> num_bool_exp op
+        // | "and" as op -> bool_exp op
+        // | "or" as op -> bool_exp op
         | _ -> unexpected_error "not supported operator"
 
 
