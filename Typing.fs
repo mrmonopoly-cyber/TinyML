@@ -131,7 +131,7 @@ let rec re (ty_set : tyvar Set) (same_v : bool) (ty_in : ty) : ty =
             TyVar (new_v)
         else ty_in
     | TyArrow(t1,t2) -> 
-        TyArrow ((cur_re true t1 ),(cur_re true t2)) //fix
+        TyArrow ((cur_re true t1 ),(cur_re true t2)) 
     | TyTuple(tylist) ->
         let fr_list = List.map (cur_re true) tylist
         TyTuple fr_list
@@ -187,9 +187,7 @@ let rec typeinfer_expr (env : scheme env) (e : expr) : ty * subst =
         let t1 = apply_subst_ty a s1
         match t with
         | Some ti ->
-            match ti with
-            | TyVar _ -> TyArrow (t1,t2),s1 //fix
-            | _ -> type_error "lmabda: expected type %O, given type %O" ti t1
+            TyArrow (t1,t2),(unify t1 ti)
         | None -> TyArrow(t1,t2),s1
 
     | App(e1,e2) ->
