@@ -238,7 +238,6 @@ let rec typeinfer_expr (env : scheme env) (e : expr) : ty * subst =
         TyTuple(ts),s
 
     | Let(n_var,t,e_let,e_in) ->
-        //fix rec
         let t1,s1 = typeinfer_expr env e_let
         match t with
         | Some tf -> if tf<>t1 then type_error "invalid type, expected %O tf, given %O" tf t1
@@ -287,11 +286,20 @@ let rec typeinfer_expr (env : scheme env) (e : expr) : ty * subst =
             let s6 = compose_subst s5 (compose_subst s4 s3)
             tyr,s6
             
+        let st_fun_eq =
+            let t1,_ = typeinfer_expr env e1 //fix
+            let cur_st_fun x = st_fun x TyBool
+            match t1 with
+            | TyInt _ -> cur_st_fun TyInt 
+            | TyBool _ -> cur_st_fun TyBool
+            | _ -> type_error "invalid type = ope, given %O, expected int or bool" t1
+
+
         match op with
         | "+" | "-" | "*" | "/" | "%"  -> st_fun TyInt TyInt
         | "and" | "or" -> st_fun TyBool TyBool
         | ">=" | "<=" -> st_fun TyInt TyBool
-        // | "=" as op -> mix_num_bool_exp op
+        | "=" -> st_fun_eq
         | _ -> unexpected_error "not supported operator"
 
     | UnOp(op,e) ->
