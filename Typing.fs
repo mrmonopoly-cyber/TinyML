@@ -236,10 +236,9 @@ let rec typeinfer_expr (env : scheme env) (e : expr) : ty * subst =
 
         let ts,s = tu_lis e_list []
         TyTuple(ts),s
-    
 
     | Let(n_var,t,e_let,e_in) ->
-        //fix t, rec
+        //fix rec
         let t1,s1 = typeinfer_expr env e_let
         match t with
         | Some tf -> if tf<>t1 then type_error "invalid type, expected %O tf, given %O" tf t1
@@ -250,6 +249,30 @@ let rec typeinfer_expr (env : scheme env) (e : expr) : ty * subst =
         let t2,s2 = typeinfer_expr env e_in
         let s3 = (compose_subst s2 s1)
         t2,s3
+
+    | LetRec(n_var,t,e_let,e_in) ->
+        let main = 
+            let fresh = TyVar new_var
+            new_var <- new_var + 1
+            let new_con = n_var,(Forall(Set.empty,fresh))
+            new_var <- new_var + 1
+            let env = new_con :: env
+            let t1,s1 = typeinfer_expr env e_let
+            match t with
+            | Some tf -> if tf<>t1 then type_error "invalid type, expected %O tf, given %O" tf t1
+            | None -> ()
+            let env = apply_subst_env env s1
+            let sch1 = gen env t1
+            let context1 = n_var,sch1
+            let env = context1 :: env
+            let t2,s2 = typeinfer_expr env e_in
+            let s3 = unify fresh (apply_subst_ty t1 s1)
+            let s4 = compose_subst s3 (compose_subst s2 s1)
+            t2,s4
+
+        match e_let with
+        | Lambda(_,_,_) -> main
+        | _ -> type_error "expected Lambda expresion with let rec"
 
 
     | BinOp (e1, op, e2) ->
@@ -270,7 +293,6 @@ let rec typeinfer_expr (env : scheme env) (e : expr) : ty * subst =
         | ">=" | "<=" -> st_fun TyInt TyBool
         // | "=" as op -> mix_num_bool_exp op
         | _ -> unexpected_error "not supported operator"
-
 
     | UnOp(op,e) ->
         let t1,s1 = typeinfer_expr env e
