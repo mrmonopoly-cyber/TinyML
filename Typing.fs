@@ -49,7 +49,7 @@ let rec apply_subst_env (env : scheme env) (s : subst) : scheme env =
 let rec compose_subst (s1 : subst) (s2 : subst) : subst = 
     match s1 with 
     | (tv,tp) :: tail ->
-        let fst_sub = (tv, (apply_subst_ty tp s2)) ::  (compose_subst tail s2)
+        let fst_sub = (tv, (apply_subst_ty tp s2)) :: (compose_subst tail s2)
         fst_sub @ s2
     | _ -> []
 
@@ -236,46 +236,32 @@ let rec typeinfer_expr (env : scheme env) (e : expr) : ty * subst =
     | LetIn((false,n_var,None,e_let),e_in) ->
 
         let t1,s1 = typeinfer_expr env e_let
-        printf "t1 %O, s1 %O\n" t1 s1
         let env = apply_subst_env env s1
-        printf "env %O \n" env
         let scheme1 = gen env t1
-        printf "scheme1 %O \n" scheme1
         let env = (n_var,scheme1):: env
-        printf "env %O \n" env
         let t2,s2 = typeinfer_expr env e_in
-        printf "t2 %O, s2 %O\n" t2 s2
         let s3 = (compose_subst s2 s1)
-        printf "s3 %O \n" s3
         t2,s3
 
 
     | BinOp (e1, op, e2) ->
-
         
-        match op with
-        | "+" as op -> 
+        let st_fun ty tyr=
             let t1,s1 = typeinfer_expr env e1
-            let s2 = unify t1 TyInt
-            printf "s2 %O \n" s2
+            let s2 = unify t1 ty
             let s3 = compose_subst s2 s1
             let env = apply_subst_env env s3
-            printf "env %O \n" env
             let t2,s4 = typeinfer_expr env e2
-            let s5 = unify t2 TyInt
-            printf "s2 %O \n" s5
+            let s5 = unify t2 ty
+            let s5 = compose_subst s5 (compose_subst s4 (compose_subst s3 s2))
             let s6 = compose_subst s5 s4
-            TyInt,s6
-
-        // | "-" as op -> num_exp op
-        // | "*" as op -> num_exp op
-        // | "/" as op -> num_exp op
-        // | "%" as op -> num_exp op
+            tyr,s6
+            
+        match op with
+        | "+" | "-" | "*" | "/" | "%" as op -> st_fun TyInt TyInt
+        | "and" | "or" as op -> TyBool TyBool
+        | ">=" | "<=" -> TyInt TyBool
         // | "=" as op -> mix_num_bool_exp op
-        // | ">=" as op -> num_bool_exp op
-        // | "<=" as op -> num_bool_exp op
-        // | "and" as op -> bool_exp op
-        // | "or" as op -> bool_exp op
         | _ -> unexpected_error "not supported operator"
 
 
