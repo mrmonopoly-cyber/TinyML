@@ -116,25 +116,29 @@ let rec lookup_scheme_env (env : scheme env) (x : string) : scheme =
 
 let mutable new_var: tyvar = 0
 
-let rec re (ty_set : tyvar Set) (ty_in : ty) : ty = 
-    let cur_re = re ty_set
+let rec re (ty_set : tyvar Set) (same_v : bool) (ty_in : ty) : ty = 
+    let cur_re = re ty_set 
     match ty_in with
     | TyName _ -> ty_in
     | TyVar a -> 
         if Set.exists (fun x -> x = a) ty_set 
         then 
-            new_var <- (new_var + 1) 
-            TyVar (new_var - 1)
+            let new_v = if same_v 
+                        then new_var
+                        else 
+                            new_var <- new_var + 1
+                            new_var - 1
+            TyVar (new_v)
         else ty_in
     | TyArrow(t1,t2) -> 
-        TyArrow ((cur_re t1),(cur_re t2)) //fix
+        TyArrow ((cur_re true t1 ),(cur_re true t2)) //fix
     | TyTuple(tylist) ->
-        let fr_list = List.map (cur_re) tylist
+        let fr_list = List.map (cur_re true) tylist
         TyTuple fr_list
         
 
 let inst (Forall (tvs,t): scheme) : ty =  
-    re tvs t
+    re tvs false t 
 // basic environment: add builtin operators at will
 //
 
@@ -239,6 +243,9 @@ let rec typeinfer_expr (env : scheme env) (e : expr) : ty * subst =
     | Let(n_var,t,e_let,e_in) ->
         //fix t, rec
         let t1,s1 = typeinfer_expr env e_let
+        match t with
+        | Some tf -> if tf<>t1 then type_error "invalid type, expected %O tf, given %O" tf t1
+        | None -> ()
         let env = apply_subst_env env s1
         let scheme1 = gen env t1
         let env = (n_var,scheme1):: env
