@@ -289,18 +289,19 @@ let rec typeinfer_expr (env : scheme env) (e : expr) : ty * subst =
 
     | BinOp (e1, op, e2) ->
         
-        let st_fun (ty : ty) (tyr:ty) (eq:bool) : ty*subst=
-            let eq_fun te = if eq then unify te ty else []
+        let st_fun (tyi : ty) (tyr:ty) (eq:bool) : ty*subst=
+            let eq_fun te = if not(eq) then unify te tyi else []
 
             let t1,s1 = typeinfer_expr env e1
-            // let s2 =  eq_fun t1 
-            let s2 = unify t1 ty
+            let s2 = eq_fun t1
             let s3 = compose_subst s2 s1
             let env = apply_subst_env env s3
             let t2,s4 = typeinfer_expr env e2
-            // let s5 = eq_fun t2 
-            let s5 = unify t2 ty
+            let s5 = eq_fun t2 
             let s6 = compose_subst s5 (compose_subst s4 s3)
+            let t3 = apply_subst_ty t1 s6
+            let t4 = apply_subst_ty t2 s6
+            if eq && (t4<>t3) then type_error "invalid types in = operator, given %O %O" t4 t3
             tyr,s6
             
                     
@@ -308,20 +309,18 @@ let rec typeinfer_expr (env : scheme env) (e : expr) : ty * subst =
         | "+" | "-" | "*" | "/" | "%"  -> st_fun TyInt TyInt false
         | "and" | "or" -> st_fun TyBool TyBool false
         | ">=" | "<=" | "<" | ">" -> st_fun TyInt TyBool false
-        | "=" | "<>" -> st_fun TyUnit TyBool true
+        | "=" | "<>" -> st_fun TyUnit TyBool true //TyUnit is useless in this case
         | _ -> unexpected_error "operator not supported"
 
     | UnOp(op,e) ->
         let t1,s1 = typeinfer_expr env e
         match op with
         | "not" ->
-            if t1<>TyBool
-            then type_error "expected TyBool given %O" t1
-            else TyArrow(t1,TyBool),s1
+            let s2 = unify t1 TyBool
+            TyArrow(t1,TyBool),compose_subst s2 s1
         | "-" ->
-            if t1<>TyInt
-            then type_error "expected TyInt given %O" t1
-            else TyArrow(t1,TyInt),s1
+            let s2 = unify t1 TyInt
+            TyArrow(t1,TyInt),compose_subst s2 s1
         | _ -> type_error "invalid unary operator %O" op
 
     // | _ -> unexpected_error "typeinfer_expr: unsupported expression: %s [AST: %A]" (pretty_expr e) e
