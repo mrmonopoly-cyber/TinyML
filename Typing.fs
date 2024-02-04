@@ -257,6 +257,11 @@ let rec typeinfer_expr (env : scheme env) (e : expr) : ty * subst =
         let s3 = (compose_subst s2 s1)
         t2,s3
 
+    | LetIn ((true,_,Some _,_),_) -> unexpected_error "unexpected case let rec, don't know why"
+    | LetIn ((false,_,Some _,_),_) -> unexpected_error "unexpected case let rec, don't know why"
+    | LetIn ((false,_,None,_),_) -> unexpected_error "unexpected case let rec, don't know why"
+    | LetIn ((true,_,None,_),_) -> unexpected_error "unexpected case let rec, don't know why"
+
     | LetRec(n_var,t,e_let,e_in) ->
         let main = 
             let fresh = TyVar new_var
@@ -285,12 +290,12 @@ let rec typeinfer_expr (env : scheme env) (e : expr) : ty * subst =
     | BinOp (e1, op, e2) ->
         
         let st_fun (ty,tyr)=
-            let t2,s1 = typeinfer_expr env e2
-            let s2 = unify t2 ty
+            let t1,s1 = typeinfer_expr env e1
+            let s2 = unify t1 ty
             let s3 = compose_subst s2 s1
             let env = apply_subst_env env s3
-            let t1,s4 = typeinfer_expr env e1
-            let s5 = unify t1 ty
+            let t2,s4 = typeinfer_expr env e2
+            let s5 = unify t2 ty
             let s6 = compose_subst s5 (compose_subst s4 s3)
             tyr,s6
             
@@ -314,8 +319,8 @@ let rec typeinfer_expr (env : scheme env) (e : expr) : ty * subst =
         match op with
         | "+" | "-" | "*" | "/" | "%"  -> st_fun (TyInt,TyInt)
         | "and" | "or" -> st_fun (TyBool,TyBool)
-        | ">=" | "<=" -> st_fun (TyInt,TyBool)
-        | "=" -> st_fun_eq
+        | ">=" | "<=" | "<" | ">" -> st_fun (TyInt,TyBool)
+        | "=" | "<>" -> st_fun_eq
         | _ -> unexpected_error "not supported operator"
 
     | UnOp(op,e) ->
