@@ -51,6 +51,7 @@ let rec compose_subst (s1 : subst) (s2 : subst) : subst =
     let composisition a tp tail= 
         let fst_sub = (a, (apply_subst_ty tp s2)) :: (compose_subst tail s2)
         fst_sub @ s2
+    
     match s1 with 
     | ((a : tyvar),(tp : ty)) :: (tail : subst) ->
         match tp with
@@ -139,10 +140,11 @@ let rec re (ty_set : tyvar Set) (same_v : bool) (ty_in : ty) : ty =
             TyVar (new_v)
         else ty_in
     | TyArrow(t1,t2) -> 
-        TyArrow ((cur_re true t1 ),(cur_re true t2)) 
+        TyArrow ((cur_re true t1 ),(cur_re false t2)) 
     | TyTuple(tylist) ->
-        let fr_list = List.map (cur_re true) tylist
-        TyTuple fr_list
+        let fr::tail = tylist
+        let fr_list = List.map (cur_re true) tail
+        TyTuple ((cur_re false fr)::fr_list)
         
 
 let inst (Forall (tvs,t): scheme) : ty =  
@@ -183,7 +185,7 @@ let rec typeinfer_expr (env : scheme env) (e : expr) : ty * subst =
         if not ( exist env varty) then type_error "variable %O not found" varty
 
         let sch = lookup_scheme_env env varty
-        let sch_ty = inst sch
+        let sch_ty = inst sch 
         sch_ty,[]
 
     | Lambda(str,t,e) ->
@@ -239,7 +241,7 @@ let rec typeinfer_expr (env : scheme env) (e : expr) : ty * subst =
                 let env = apply_subst_env env s
                 let ti,si = typeinfer_expr env head
                 let tlj,sj = tu_lis tail (compose_subst si s)
-                (tlj @ [ti]),sj
+                (ti::tlj),sj
             | [] -> [],s
 
         let ts,s = tu_lis e_list []
@@ -253,7 +255,7 @@ let rec typeinfer_expr (env : scheme env) (e : expr) : ty * subst =
         let env = apply_subst_env env s1
         let scheme1 = gen env t1
         let env = (n_var,scheme1):: env
-        let t2,s2 = typeinfer_expr env e_in
+        let t2,s2 = typeinfer_expr env e_in 
         let s3 = (compose_subst s2 s1)
         t2,s3
 
@@ -267,7 +269,6 @@ let rec typeinfer_expr (env : scheme env) (e : expr) : ty * subst =
             let fresh = TyVar new_var
             new_var <- new_var + 1
             let new_con = n_var,(Forall(Set.empty,fresh))
-            new_var <- new_var + 1
             let env = new_con :: env
             let t1,s1 = typeinfer_expr env e_let
             match t with
@@ -290,6 +291,7 @@ let rec typeinfer_expr (env : scheme env) (e : expr) : ty * subst =
     | BinOp (e1, op, e2) ->
         
         let st_fun (tyi : ty) (tyr:ty) (eq:bool) : ty*subst=
+            
             let eq_fun te = if not(eq) then unify te tyi else []
 
             let t1,s1 = typeinfer_expr env e1
@@ -299,10 +301,14 @@ let rec typeinfer_expr (env : scheme env) (e : expr) : ty * subst =
             let t2,s4 = typeinfer_expr env e2
             let s5 = eq_fun t2 
             let s6 = compose_subst s5 (compose_subst s4 s3)
-            let t3 = apply_subst_ty t1 s6
-            let t4 = apply_subst_ty t2 s6
-            if eq && (t4<>t3) then type_error "invalid types in = operator, given %O %O" t4 t3
-            tyr,s6
+            if eq 
+            then 
+                let s7 = unify t1 t2
+                let s7 = compose_subst s7 s6
+                let t1 = apply_subst_ty t1 s7
+                if t1<>t2 then type_error "error in = given %O %O " t1 t2
+                tyr,s7
+            else tyr,s6
             
                     
         match op with
