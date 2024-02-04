@@ -60,7 +60,7 @@ let rec compose_subst (s1 : subst) (s2 : subst) : subst =
             then type_error "circular dependency found with var %O and var %O" a b
             else composisition a tp s2
         | _ ->
-            composisition a tp s2
+            composisition a tp tail
     | _ -> s2
 
             // conflitti 
@@ -284,7 +284,7 @@ let rec typeinfer_expr (env : scheme env) (e : expr) : ty * subst =
 
     | BinOp (e1, op, e2) ->
         
-        let st_fun ty tyr=
+        let st_fun (ty,tyr)=
             let t1,s1 = typeinfer_expr env e1
             let s2 = unify t1 ty
             let s3 = compose_subst s2 s1
@@ -294,19 +294,27 @@ let rec typeinfer_expr (env : scheme env) (e : expr) : ty * subst =
             let s6 = compose_subst s5 (compose_subst s4 s3)
             tyr,s6
             
+        let match_eq (e : expr) : ty * subst =
+            let t,s = typeinfer_expr env e
+            match t with
+            | TyBool _ -> (TyBool,s) 
+            | TyInt _-> (TyInt,s)
+            | _ -> (TyUnit,s)
+        
         let st_fun_eq =
-            let t1,_ = typeinfer_expr env e1 //fix
-            let cur_st_fun x = st_fun x TyBool
-            match t1 with
-            | TyInt _ -> cur_st_fun TyInt 
-            | TyBool _ -> cur_st_fun TyBool
-            | _ -> type_error "invalid type = ope, given %O, expected int or bool" t1
-
-
+            let r,s1 = match_eq e1
+            if r<>TyUnit
+            then st_fun (r,TyBool)
+            else 
+                let r,s2 = match_eq e2
+                if r<>TyUnit
+                then st_fun (r,TyBool)
+                else TyBool,compose_subst s1 s2
+                    
         match op with
-        | "+" | "-" | "*" | "/" | "%"  -> st_fun TyInt TyInt
-        | "and" | "or" -> st_fun TyBool TyBool
-        | ">=" | "<=" -> st_fun TyInt TyBool
+        | "+" | "-" | "*" | "/" | "%"  -> st_fun (TyInt,TyInt)
+        | "and" | "or" -> st_fun (TyBool,TyBool)
+        | ">=" | "<=" -> st_fun (TyInt,TyBool)
         | "=" -> st_fun_eq
         | _ -> unexpected_error "not supported operator"
 
