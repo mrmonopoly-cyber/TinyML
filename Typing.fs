@@ -13,13 +13,14 @@ type subst = (tyvar * ty) list
         
 // TODO implement this
 let rec apply_subst_ty (t : ty) (s : subst) : ty = 
-    let rec exist (tyv : tyvar)  (li : subst) =
+
+    let rec exist (b : tyvar)  (li : subst) =
         match li with
-        | ((tyvl,typ)::tail) -> 
-            if  tyvl = tyv 
+        | ((a,typ)::tail) -> 
+            if  a = b
             then typ 
-            else exist tyv tail
-        | [] -> TyVar tyv 
+            else exist b tail
+        | [] -> TyVar b 
 
     let cur_apply x = apply_subst_ty x s
     match t with
@@ -60,11 +61,11 @@ let rec compose_subst (s1 : subst) (s2 : subst) : subst =
             else composisition a tp s2
         | _ ->
             composisition a tp s2
-            // conflitti 
-            // 'b -> 'a
-            // 'b -> bool
     | _ -> s2
 
+            // conflitti 
+            // 'b -> 'a
+            // 'a -> bool
 // TODO implement this
 let rec unify (t1 : ty) (t2 : ty) : subst = 
     match t1,t2 with
