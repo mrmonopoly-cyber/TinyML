@@ -285,12 +285,12 @@ let rec typeinfer_expr (env : scheme env) (e : expr) : ty * subst =
     | BinOp (e1, op, e2) ->
         
         let st_fun (ty,tyr)=
-            let t1,s1 = typeinfer_expr env e1
-            let s2 = unify t1 ty
+            let t2,s1 = typeinfer_expr env e2
+            let s2 = unify t2 ty
             let s3 = compose_subst s2 s1
             let env = apply_subst_env env s3
-            let t2,s4 = typeinfer_expr env e2
-            let s5 = unify t2 ty
+            let t1,s4 = typeinfer_expr env e1
+            let s5 = unify t1 ty
             let s6 = compose_subst s5 (compose_subst s4 s3)
             tyr,s6
             
