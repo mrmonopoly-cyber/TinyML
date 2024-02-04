@@ -20,6 +20,7 @@ type op_fun =
     | Bool_bool of (bool->bool)
     | Int_bool of (int->bool)
 
+
 let eval_op v1 v2 op_f =
     match v1,v2,op_f with
     | VLit(LInt(v1)), Some(VLit(LInt(v2))), (Int_int_bool op) -> VLit(LBool(op v1 v2))
@@ -79,19 +80,27 @@ let rec eval_expr (venv : value env) (e : expr) : value =
     | Tuple(el) -> VTuple(List.map (eval_expr venv) el)
 
     | BinOp (e1,op,e2) ->
+
+        let eval_eq_op v1 v2 =
+            match v1,v2 with
+            | VLit(LInt(v1)), Some(VLit(LInt(v2))) -> VLit(LBool(v1 = v2))
+            | VLit(LBool(v1)), Some(VLit(LBool(v2))) -> VLit(LBool(v1 = v2))
+            | _,_ ->  unexpected_error "impossible case"
+
         let v1 = eval_expr venv e1
         let v2 = Some(eval_expr venv e2)
+        let cur_eval_op = eval_op v1 v2
         match op with
-        | "+" -> eval_op v1 v2 (Int_int_int (+))
-        | "-" -> eval_op v1 v2 (Int_int_int (-))
-        | "*" -> eval_op v1 v2 (Int_int_int (*))
-        | "/" -> eval_op v1 v2 (Int_int_int (/))
-        | "%" -> eval_op v1 v2 (Int_int_int (%))
-        | "=" -> eval_op v1 v2 (Int_int_bool (=))
-        | ">=" -> eval_op v1 v2  (Int_int_bool (>=))
-        | "<=" -> eval_op v1 v2 (Int_int_bool (<=))
-        | "and" -> eval_op v1 v2 (Bool_bool_bool (&&))
-        | "or" -> eval_op v1 v2 (Bool_bool_bool (||))
+        | "+" -> cur_eval_op (Int_int_int (+))
+        | "-" -> cur_eval_op (Int_int_int (-))
+        | "*" -> cur_eval_op (Int_int_int (*))
+        | "/" -> cur_eval_op (Int_int_int (/))
+        | "%" -> cur_eval_op (Int_int_int (%))
+        | "=" -> eval_eq_op v1 v2 
+        | ">=" -> cur_eval_op (Int_int_bool (>=))
+        | "<=" -> cur_eval_op(Int_int_bool (<=))
+        | "and" ->cur_eval_op (Bool_bool_bool (&&))
+        | "or" -> cur_eval_op(Bool_bool_bool (||))
         | _ -> unexpected_error "impossible case"
 
     | UnOp(op,e1) ->
