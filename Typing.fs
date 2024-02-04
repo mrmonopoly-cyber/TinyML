@@ -47,15 +47,22 @@ let rec apply_subst_env (env : scheme env) (s : subst) : scheme env =
     
 // TODO implement this
 let rec compose_subst (s1 : subst) (s2 : subst) : subst = 
-    match s1 with 
-    | (tv,tp) :: tail ->
-        let fst_sub = (tv, (apply_subst_ty tp s2)) :: (compose_subst tail s2)
+    let composisition a tp tail= 
+        let fst_sub = (a, (apply_subst_ty tp s2)) :: (compose_subst tail s2)
         fst_sub @ s2
-        // fix cicli, conflitti 
-        // 'a -> int
-        // 'a -> bool
-        // 'a -> 'b
-        // 'a -> bool
+    match s1 with 
+    | ((a : tyvar),(tp : ty)) :: (tail : subst) ->
+        match tp with
+        | TyVar b -> 
+            let to_find = (b,TyVar a)
+            if List.exists (fun x -> x = to_find) s2
+            then type_error "circular dependency found with var %O and var %O" a b
+            else composisition a tp s2
+        | _ ->
+            composisition a tp s2
+            // conflitti 
+            // 'b -> 'a
+            // 'b -> bool
     | _ -> s2
 
 // TODO implement this
