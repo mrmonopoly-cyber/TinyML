@@ -299,28 +299,12 @@ let rec typeinfer_expr (env : scheme env) (e : expr) : ty * subst =
             let s6 = compose_subst s5 (compose_subst s4 s3)
             tyr,s6
             
-        let match_eq (e : expr) : ty * subst =
-            let t,s = typeinfer_expr env e
-            match t with
-            | TyBool _ -> (TyBool,s) 
-            | TyInt _-> (TyInt,s)
-            | _ -> (TyUnit,s)
-        
-        let st_fun_eq =
-            let r,s1 = match_eq e1
-            if r<>TyUnit
-            then st_fun (r,TyBool)
-            else 
-                let r,s2 = match_eq e2
-                if r<>TyUnit
-                then st_fun (r,TyBool)
-                else TyBool,compose_subst s1 s2
                     
         match op with
         | "+" | "-" | "*" | "/" | "%"  -> st_fun (TyInt,TyInt)
         | "and" | "or" -> st_fun (TyBool,TyBool)
         | ">=" | "<=" | "<" | ">" -> st_fun (TyInt,TyBool)
-        | "=" | "<>" -> st_fun_eq
+        | "=" | "<>" -> TyBool,[]
         | _ -> unexpected_error "not supported operator"
 
     | UnOp(op,e) ->
