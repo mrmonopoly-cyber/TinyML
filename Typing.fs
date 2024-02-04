@@ -289,21 +289,26 @@ let rec typeinfer_expr (env : scheme env) (e : expr) : ty * subst =
 
     | BinOp (e1, op, e2) ->
         
-        let st_fun (ty,tyr)=
+        let st_fun (ty : ty) (tyr:ty) (eq:bool) : ty*subst=
+            let eq_fun te =
+                match eq with
+                | true -> unify te ty
+                | false -> []
+
             let t1,s1 = typeinfer_expr env e1
-            let s2 = unify t1 ty
+            let s2 =  eq_fun t1 //unify t1 ty
             let s3 = compose_subst s2 s1
             let env = apply_subst_env env s3
             let t2,s4 = typeinfer_expr env e2
-            let s5 = unify t2 ty
+            let s5 = eq_fun t2 //unify t2 ty
             let s6 = compose_subst s5 (compose_subst s4 s3)
             tyr,s6
             
                     
         match op with
-        | "+" | "-" | "*" | "/" | "%"  -> st_fun (TyInt,TyInt)
-        | "and" | "or" -> st_fun (TyBool,TyBool)
-        | ">=" | "<=" | "<" | ">" -> st_fun (TyInt,TyBool)
+        | "+" | "-" | "*" | "/" | "%"  -> st_fun TyInt TyInt false
+        | "and" | "or" -> st_fun TyBool TyBool false
+        | ">=" | "<=" | "<" | ">" -> st_fun TyInt TyBool false
         | "=" | "<>" -> TyBool,[]
         | _ -> unexpected_error "not supported operator"
 
