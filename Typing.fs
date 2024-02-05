@@ -125,30 +125,54 @@ let rec lookup_scheme_env (env : scheme env) (x : string) : scheme =
 
 let mutable new_var: tyvar = 0
 
-let rec re (ty_set : tyvar Set) (same_v : bool) (ty_in : ty) : ty = 
-    let cur_re = re ty_set 
-    match ty_in with
-    | TyName _ -> ty_in
-    | TyVar a -> 
-        if Set.exists (fun x -> x = a) ty_set 
-        then 
-            let new_v = if same_v 
-                        then new_var
-                        else 
-                            new_var <- new_var + 1
-                            new_var - 1
-            TyVar (new_v)
-        else ty_in
-    | TyArrow(t1,t2) -> 
-        TyArrow ((cur_re true t1 ),(cur_re false t2)) 
-    | TyTuple(tylist) ->
-        let fr::tail = tylist
-        let fr_list = List.map (cur_re true) tail
-        TyTuple ((cur_re false fr)::fr_list)
+let c_new_var : tyvar=
+    let mutable new_var :tyvar= 0
+    new_var <- new_var + 1
+    new_var
+
+// let rec re (ty_set : tyvar Set) (same_v : bool) (ty_in : ty) : ty = 
+//     let cur_re = re ty_set 
+//     match ty_in with
+//     | TyName _ -> ty_in
+//     | TyVar a -> 
+//         if Set.exists (fun x -> x = a) ty_set 
+//         then 
+//             let new_v = if same_v 
+//                         then new_var
+//                         else 
+//                             new_var <- new_var + 1
+//                             new_var - 1
+//             TyVar (new_v)
+//         else ty_in
+//     | TyArrow(t1,t2) -> 
+//         TyArrow ((cur_re true t1 ),(cur_re false t2)) 
+//     | TyTuple(tylist) ->
+//         let fr::tail = tylist
+//         let fr_list = List.map (cur_re true) tail
+//         TyTuple ((cur_re false fr)::fr_list)
         
 
 let inst (Forall (tvs,t): scheme) : ty =  
-    re tvs false t 
+    let rec re (tyi:ty) (ty_l:((tyvar * tyvar) Set)) : ty = 
+        match tyi with
+        | TyName _ -> tyi
+        | TyVar a -> 
+            let sub = Set.filter (fun (x,_) -> x=a) ty_l
+            if sub.IsEmpty then type_error "variable not found in scheme %O" sub
+            let res = Set.minElement sub
+            let _,t = res
+            TyVar t
+        | TyArrow (t1,t2) ->
+            TyArrow ((re t1 ty_l),(re t2 ty_l))
+        | TyTuple (tylist) ->
+            let fr_list = List.map (fun x -> re x ty_l) tylist
+            TyTuple fr_list
+
+    let tvs_new = Set.map (fun x -> (x,x + c_new_var)) tvs
+    
+    re t tvs_new
+    // re tvs false t 
+
 // basic environment: add builtin operators at will
 //
 
