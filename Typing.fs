@@ -48,21 +48,31 @@ let rec apply_subst_env (env : scheme env) (s : subst) : scheme env =
     
 // TODO implement this
 let rec compose_subst (s1 : subst) (s2 : subst) : subst = 
-    let composisition a tp tail= 
-        let fst_sub = (a, (apply_subst_ty tp s2)) :: (compose_subst tail s2) in fst_sub @ s2
+    let rec apply_sub  (si:subst) (so:subst) : subst =
+        match si with
+        | [] -> s2
+        | ((a : tyvar),(tp : ty)) :: (tail :subst) ->
+            (a,apply_subst_ty tp so) :: (compose_subst tail so)
     
-    match s1 with 
-    | ((a : tyvar),(tp : ty)) :: (tail : subst) ->
-        match tp with
-        | TyVar b -> 
-            let to_find = (b,TyVar a)
-            if List.exists (fun x -> x = to_find) s2
-            then type_error "circular dependency found with var %O and var %O" a b
-            else composisition a tp tail
-        | _ ->
-            composisition a tp tail
-    | _ -> s2
+    let first = apply_sub s1 s2
+    apply_sub first s2
 
+    // let composisition a tp tail= 
+    //     let fst_sub = (a, (apply_subst_ty tp s2)) :: (compose_subst tail s2) 
+    //     fst_sub @ s2
+    // 
+    // match s1 with 
+    // | ((a : tyvar),(tp : ty)) :: (tail : subst) ->
+    //     match tp with
+    //     | TyVar b -> 
+    //         let to_find = (b,TyVar a)
+    //         if List.exists (fun x -> x = to_find) s2
+    //         then type_error "circular dependency found with var %O and var %O" a b
+    //         else composisition a tp tail
+    //     | _ ->
+    //         composisition a tp tail
+    // | _ -> s2
+    //
             // conflitti 
             // 'b -> 'a
             // 'a -> bool
@@ -129,27 +139,6 @@ let c_new_var : tyvar=
     new_var <- new_var + 1
     new_var
 
-// let rec re (ty_set : tyvar Set) (same_v : bool) (ty_in : ty) : ty = 
-//     let cur_re = re ty_set 
-//     match ty_in with
-//     | TyName _ -> ty_in
-//     | TyVar a -> 
-//         if Set.exists (fun x -> x = a) ty_set 
-//         then 
-//             let new_v = if same_v 
-//                         then new_var
-//                         else 
-//                             new_var <- new_var + 1
-//                             new_var - 1
-//             TyVar (new_v)
-//         else ty_in
-//     | TyArrow(t1,t2) -> 
-//         TyArrow ((cur_re true t1 ),(cur_re false t2)) 
-//     | TyTuple(tylist) ->
-//         let fr::tail = tylist
-//         let fr_list = List.map (cur_re true) tail
-//         TyTuple ((cur_re false fr)::fr_list)
-        
 
 let inst (Forall (tvs,t): scheme) : ty =  
     let rec re (tyi:ty) (ty_l:((tyvar * tyvar) Set)) : ty = 
@@ -173,7 +162,6 @@ let inst (Forall (tvs,t): scheme) : ty =
     let tvs_new = Set.map (fun x -> (x,x + c_new_var)) tvs
     
     re t tvs_new
-    // re tvs false t 
 
 // basic environment: add builtin operators at will
 //
