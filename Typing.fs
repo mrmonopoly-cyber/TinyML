@@ -49,8 +49,7 @@ let rec apply_subst_env (env : scheme env) (s : subst) : scheme env =
 // TODO implement this
 let rec compose_subst (s1 : subst) (s2 : subst) : subst = 
     let composisition a tp tail= 
-        let fst_sub = (a, (apply_subst_ty tp s2)) :: (compose_subst tail s2)
-        fst_sub @ s2
+        let fst_sub = (a, (apply_subst_ty tp s2)) :: (compose_subst tail s2) in fst_sub @ s2
     
     match s1 with 
     | ((a : tyvar),(tp : ty)) :: (tail : subst) ->
@@ -59,7 +58,7 @@ let rec compose_subst (s1 : subst) (s2 : subst) : subst =
             let to_find = (b,TyVar a)
             if List.exists (fun x -> x = to_find) s2
             then type_error "circular dependency found with var %O and var %O" a b
-            else composisition a tp s2
+            else composisition a tp tail
         | _ ->
             composisition a tp tail
     | _ -> s2
@@ -158,10 +157,13 @@ let inst (Forall (tvs,t): scheme) : ty =
         | TyName _ -> tyi
         | TyVar a -> 
             let sub = Set.filter (fun (x,_) -> x=a) ty_l
-            if sub.IsEmpty then type_error "variable not found in scheme %O" sub
-            let res = Set.minElement sub
-            let _,t = res
-            TyVar t
+            if sub.IsEmpty 
+            then 
+                tyi
+            else
+                let res = Set.minElement sub
+                let _,t = res
+                TyVar t
         | TyArrow (t1,t2) ->
             TyArrow ((re t1 ty_l),(re t2 ty_l))
         | TyTuple (tylist) ->
