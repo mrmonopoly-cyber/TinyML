@@ -55,7 +55,7 @@ let rec compose_subst (s1 : subst) (s2 : subst) : subst =
             (a,apply_subst_ty tp so) :: (apply_sub tail so)
     
     let first = apply_sub s1 s2
-    apply_sub first s2
+    apply_sub first s1
 
     // let composisition a tp tail= 
     //     let fst_sub = (a, (apply_subst_ty tp s2)) :: (compose_subst tail s2) 
