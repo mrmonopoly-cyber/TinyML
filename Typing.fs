@@ -52,7 +52,7 @@ let rec compose_subst (s1 : subst) (s2 : subst) : subst =
         match si with
         | [] -> s2
         | ((a : tyvar),(tp : ty)) :: (tail :subst) ->
-            (a,apply_subst_ty tp so) :: (compose_subst tail so)
+            (a,apply_subst_ty tp so) :: (apply_sub tail so)
     
     let first = apply_sub s1 s2
     apply_sub first s2
