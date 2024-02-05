@@ -57,25 +57,6 @@ let rec compose_subst (s1 : subst) (s2 : subst) : subst =
     let first = apply_sub s1 s2
     apply_sub first s1
 
-    // let composisition a tp tail= 
-    //     let fst_sub = (a, (apply_subst_ty tp s2)) :: (compose_subst tail s2) 
-    //     fst_sub @ s2
-    // 
-    // match s1 with 
-    // | ((a : tyvar),(tp : ty)) :: (tail : subst) ->
-    //     match tp with
-    //     | TyVar b -> 
-    //         let to_find = (b,TyVar a)
-    //         if List.exists (fun x -> x = to_find) s2
-    //         then type_error "circular dependency found with var %O and var %O" a b
-    //         else composisition a tp tail
-    //     | _ ->
-    //         composisition a tp tail
-    // | _ -> s2
-    //
-            // conflitti 
-            // 'b -> 'a
-            // 'a -> bool
 // TODO implement this
 let rec unify (t1 : ty) (t2 : ty) : subst = 
     match t1,t2 with
@@ -203,8 +184,7 @@ let rec typeinfer_expr (env : scheme env) (e : expr) : ty * subst =
         sch_ty,[]
 
     | Lambda(str,t,e) ->
-        let a = TyVar(new_var)
-        new_var <- new_var + 1
+        let a = TyVar(c_new_var)
         let l_scheme = Forall(Set.empty,a)
         let env = (str,l_scheme) :: env
         let t2,s1 = typeinfer_expr env e
@@ -218,8 +198,7 @@ let rec typeinfer_expr (env : scheme env) (e : expr) : ty * subst =
         let t1,s1 = typeinfer_expr env e1
         let env = apply_subst_env env s1
         let t2,s2 = typeinfer_expr env e2
-        let fresh_var = TyVar new_var
-        new_var <- new_var + 1
+        let fresh_var = TyVar c_new_var
         let s3 = unify t1 (TyArrow(t2,fresh_var))
         let sf = compose_subst s3 s2
         let tf = apply_subst_ty fresh_var s3
@@ -261,7 +240,8 @@ let rec typeinfer_expr (env : scheme env) (e : expr) : ty * subst =
         let ts,s = tu_lis e_list []
         TyTuple(ts),s
 
-    | Let(n_var,t,e_let,e_in) ->
+    //| Let(n_var,t,e_let,e_in) ->
+    | LetIn((false,n_var,t,e_let),e_in) ->
         let t1,s1 = typeinfer_expr env e_let
         match t with
         | Some tf -> if tf<>t1 then type_error "invalid type, expected %O tf, given %O" tf t1
@@ -272,16 +252,10 @@ let rec typeinfer_expr (env : scheme env) (e : expr) : ty * subst =
         let t2,s2 = typeinfer_expr env e_in 
         let s3 = (compose_subst s2 s1)
         t2,s3
-
-    | LetIn ((true,_,Some _,_),_) -> unexpected_error "unexpected case let rec, don't know why"
-    | LetIn ((false,_,Some _,_),_) -> unexpected_error "unexpected case let rec, don't know why"
-    | LetIn ((false,_,None,_),_) -> unexpected_error "unexpected case let rec, don't know why"
-    | LetIn ((true,_,None,_),_) -> unexpected_error "unexpected case let rec, don't know why"
-
-    | LetRec(n_var,t,e_let,e_in) ->
+    
+    | LetIn((true,n_var,t,e_let),e_in) ->
         let main = 
-            let fresh = TyVar new_var
-            new_var <- new_var + 1
+            let fresh = TyVar c_new_var
             let new_con = n_var,(Forall(Set.empty,fresh))
             let env = new_con :: env
             let t1,s1 = typeinfer_expr env e_let
