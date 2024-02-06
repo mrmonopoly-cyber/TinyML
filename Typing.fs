@@ -314,7 +314,7 @@ let rec typeinfer_expr (env : scheme env) (e : expr) : ty * subst =
             let t2,s2 = typeinfer_expr env e2
             let s3 = compose_subst s2 s1 
             match t1,t2 with
-            | TyVar _, TyVar _ | TyInt _, _ | _ ,TyInt _ ->
+            | TyVar _, TyVar _ | TyInt _, _ | _ ,TyInt _ | TyInt _, TyInt _ ->
                 let s4 = unify t1 TyInt
                 let s5 = unify t2 TyInt
                 let s5 = compose_subst s3 (compose_subst s2 (compose_subst s1 (compose_subst s5 s4)))
@@ -325,10 +325,19 @@ let rec typeinfer_expr (env : scheme env) (e : expr) : ty * subst =
                 let s5 = compose_subst s3 (compose_subst s2 (compose_subst s1 (compose_subst s5 s4)))
                 TyBool,s5
             
+        let st_fun_bool : ty * subst =
+            let t1,s1 = typeinfer_expr env e1
+            let s2 = unify t1 TyBool
+            let s3 = compose_subst s2 s1
+            let env = apply_subst_env env s3
+            let t2,s4 = typeinfer_expr env e2
+            let s5 = unify t2 TyBool
+            let s6 = compose_subst s5 (compose_subst s4 s3)
+            TyBool,s6
                     
         match op with
         | "+" | "-" | "*" | "/" | "%" -> st_fun_ari 
-        | "and" | "or" -> st_fun_b_exp 
+        | "and" | "or" -> st_fun_bool 
         |">=" | "<=" | "<" | ">" -> st_fun_b_exp 
         |"=" | "<>" -> st_fun_eq (Some TyBool)
         | _ -> unexpected_error "operator not supported"
