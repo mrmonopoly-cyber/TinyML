@@ -144,6 +144,3 @@ let rec eval_expr (venv : value env) (e : expr) : value =
         | "not" -> match_not v1 not
         | "-" -> match_negation v1 
         | _ -> unexpected_error "impossible case"
-
-
-   
