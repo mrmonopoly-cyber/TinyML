@@ -279,33 +279,29 @@ let rec typeinfer_expr (env : scheme env) (e : expr) : ty * subst =
 
     | BinOp (e1, op, e2) ->
         
-        let st_fun (tyi : ty) (tyr:ty) (eq:bool) : ty*subst=
+        let st_fun (op:string) (supp_types : ty list) (ty_res:ty option) : ty*subst=
             
-            let eq_fun te = if not(eq) then unify te tyi else []
-
             let t1,s1 = typeinfer_expr env e1
-            let s2 = eq_fun t1
-            let s3 = compose_subst s2 s1
-            let env = apply_subst_env env s3
-            let t2,s4 = typeinfer_expr env e2
-            let s5 = eq_fun t2 
-            let s6 = compose_subst s5 (compose_subst s4 s3)
-            if eq 
-            then 
-                let s7 = unify t1 t2
-                let s7 = compose_subst s7 s6
-                let t1 = apply_subst_ty t1 s7
-                if t1<>t2 then type_error "error in = given %O %O " t1 t2
-                tyr,s7
-            else 
-                tyr,s6
+            let env = apply_subst_env env s1
+            let t2,s2 = typeinfer_expr env e2
+            let s3 = compose_subst s2 s1 
+            let s4 = unify t1 t2
+            let s5 = compose_subst s4 s3
+            let t1 = apply_subst_ty t1 s5
+            let t2 = apply_subst_ty t2 s5
+            if t1<>t2 then type_error "types in %s does not coincide , given %O %O " op t1 t2
+            if not(List.exists (fun x -> x = t1) supp_types)
+            then type_error "invalid types for operator %s, given %O %O, supported %O" op t1 t2 supp_types
+            match ty_res with
+            | None -> t1,s5
+            | Some t -> t,s5
             
                     
         match op with
-        | "+" | "-" | "*" | "/" | "%"  -> st_fun TyInt TyInt false
-        | "and" | "or" -> st_fun TyBool TyBool false
-        | ">=" | "<=" | "<" | ">" -> st_fun TyInt TyBool false
-        | "=" | "<>" -> st_fun TyUnit TyBool true //TyUnit is useless in this case
+        |( "+" | "-" | "*" | "/" | "%") as op -> st_fun op [TyInt;TyFloat] None
+        |( "and" | "or") as op -> st_fun op [TyBool] (Some TyBool)
+        |(">=" | "<=" | "<" | ">") as op-> st_fun op [TyInt;TyFloat] None
+        |("=" | "<>") as op -> st_fun op [TyFloat;TyInt;TyBool;TyChar;TyString] (Some TyBool)
         | _ -> unexpected_error "operator not supported"
 
     | UnOp(op,e) ->
