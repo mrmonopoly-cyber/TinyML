@@ -50,12 +50,16 @@ let rec apply_subst_env (env : scheme env) (s : subst) : scheme env =
 let rec compose_subst (s1 : subst) (s2 : subst) : subst = 
     let rec apply_sub  (si:subst) (so:subst) : subst =
         match si with
-        | [] -> s2
+        | [] -> so
         | ((a : tyvar),(tp : ty)) :: (tail :subst) ->
-            (a,apply_subst_ty tp so) :: (apply_sub tail so)
+           let new_subs_tuple = (a,apply_subst_ty tp so) 
+           new_subs_tuple :: (apply_sub tail so)
     
     let first = apply_sub s1 s2
-    apply_sub first s1
+    let comp =apply_sub first s1
+
+    comp
+
 
 // TODO implement this
 let rec unify (t1 : ty) (t2 : ty) : subst = 
@@ -67,12 +71,13 @@ let rec unify (t1 : ty) (t2 : ty) : subst =
     | TyVar a, t | t , TyVar a ->
         [a,t]
     | TyArrow(t1,t2), TyArrow(t3,t4) ->
-        compose_subst (unify t1 t3) (unify t2 t4)
+         (unify t1 t3) @ (unify t2 t4)
     | TyTuple (head1::tail1), TyTuple(head2::tail2) ->
         let res_h = unify head1 head2
         let res_tail = unify (TyTuple tail1) (TyTuple tail2)
-        compose_subst res_h res_tail
+        res_h @ res_tail
     | _ -> type_error "invalid case unification function with type %O %O" t1 t2
+
 
 // TODO implement this
 let rec freevars_ty (t:ty) : tyvar Set = 
@@ -146,7 +151,11 @@ let inst (Forall (tvs,t): scheme) : ty =
 // basic environment: add builtin operators at will
 //
 
-let gamma0 = []
+let gamma0 = [
+    ("head", TyArrow (TyString, TyString))
+    ("tail", TyArrow (TyString, TyString))
+    ("::", TyArrow(TyString, TyString))
+]
 //    ("+", TyArrow (TyInt, TyArrow (TyInt, TyInt)))
 //    ("-", TyArrow (TyInt, TyArrow (TyInt, TyInt)))
 //    ("*", TyArrow (TyInt, TyArrow (TyInt, TyInt)))
