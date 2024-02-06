@@ -152,15 +152,10 @@ let inst (Forall (tvs,t): scheme) : ty =
 //
 
 let gamma0 = [
-    ("head", TyArrow (TyString, TyString))
-    ("tail", TyArrow (TyString, TyString))
-    ("::", TyArrow(TyString, TyString))
+    ("head", Forall (Set.empty,TyArrow (TyString, TyString)))
+    ("tail", Forall (Set.empty,TyArrow (TyString, TyString)))
+    ("::", Forall (Set.empty,TyArrow (TyString, TyString)))
 ]
-//    ("+", TyArrow (TyInt, TyArrow (TyInt, TyInt)))
-//    ("-", TyArrow (TyInt, TyArrow (TyInt, TyInt)))
-//    ("*", TyArrow (TyInt, TyArrow (TyInt, TyInt)))
-//    ("/", TyArrow (TyInt, TyArrow (TyInt, TyInt)))
-//    ("<", TyArrow (TyInt, TyArrow (TyInt, TyBool)))
 
 
 // type inference
