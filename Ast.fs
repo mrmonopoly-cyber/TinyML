@@ -120,7 +120,17 @@ let pretty_tupled p l = flatten p ", " l
 let rec pretty_ty t =
     match t with
     | TyName s -> s
-    | TyArrow (t1, t2) -> sprintf "%s -> %s" (pretty_ty t1) (pretty_ty t2)
+    | TyArrow (t1, t2) -> 
+        let v1 = pretty_ty t1
+        let v2 = pretty_ty t2
+        match t1,t2 with
+        | TyArrow _,TyArrow _ ->
+            sprintf "(%s) -> (%s)" v1 v2
+        | TyArrow _, _ ->
+            sprintf "(%s) -> %s" v1 v2
+        | _,TyArrow _ ->
+            sprintf "%s -> (%s)" v1 v2
+        | _ ->   sprintf "%s -> %s" v1 v2
     | TyVar n -> sprintf "'%d" n
     | TyTuple ts -> sprintf "(%s)" (pretty_tupled pretty_ty ts)
 
@@ -142,7 +152,8 @@ let rec pretty_expr e =
     | Lambda (x, Some t, e) -> sprintf "fun (%s : %s) -> %s" x (pretty_ty t) (pretty_expr e)
     
     // TODO write a better pretty-printer that puts brackets on non-trivial expressions appearing on the right side of an application
-    | App (e1, e2) -> sprintf "%s %s" (pretty_expr e1) (pretty_expr e2)
+    | App (e1, e2) -> 
+        sprintf "%s %s" (pretty_expr e1) (pretty_expr e2)
 
     | Var x -> x
 
