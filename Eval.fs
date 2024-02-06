@@ -13,6 +13,10 @@ let lookup env x =
     let _, v = List.find (fun (x', _) -> x = x') env
     v
 
+type ty =
+    | Float of float
+    | Int of int
+
 type op_fun =
     | Int_int_bool of (int->int->bool)
     | Int_int_int of (int->int->int)
@@ -21,14 +25,6 @@ type op_fun =
     | Int_bool of (int->bool)
 
 
-let eval_op v1 v2 op_f =
-    match v1,v2,op_f with
-    | VLit(LInt(v1)), Some(VLit(LInt(v2))), (Int_int_bool op) -> VLit(LBool(op v1 v2))
-    | VLit(LInt(v1)), Some(VLit(LInt(v2))), (Int_int_int op) -> VLit(LInt(op v1 v2))
-    | VLit(LBool(v1)), Some(VLit(LBool(v2))), (Bool_bool_bool op) -> VLit(LBool(op v1 v2))
-    | VLit(LBool(v1)), None , (Bool_bool op) -> VLit(LBool(op v1))
-    | VLit(LInt(v1)), None ,(Int_bool op) -> VLit(LBool(op v1))
-    | _,_,_ ->  unexpected_error "impossible case"
 
     
 let eval_if_else (vg:value) v1 v2 =
@@ -81,33 +77,72 @@ let rec eval_expr (venv : value env) (e : expr) : value =
 
     | BinOp (e1,op,e2) ->
 
-        let eval_eq_op v1 v2 =
-            match v1,v2 with
-            | VLit(LInt(v1)), Some(VLit(LInt(v2))) -> VLit(LBool(v1 = v2))
-            | VLit(LBool(v1)), Some(VLit(LBool(v2))) -> VLit(LBool(v1 = v2))
-            | _,_ ->  unexpected_error "impossible case"
-
         let v1 = eval_expr venv e1
         let v2 = Some(eval_expr venv e2)
-        let cur_eval_op = eval_op v1 v2
+        
+        let match_eq v1 v2 (opi,opf,opb,opc,ops)=
+            match v1,v2 with
+            | VLit(LInt(v1)), Some(VLit(LInt(v2))) -> VLit(LBool(opi v1 v2))
+            | VLit(LFloat(v1)), Some(VLit(LFloat(v2))) -> VLit(LBool(opf v1 v2))
+            | VLit(LBool(v1)), Some(VLit(LBool(v2))) -> VLit(LBool(opb v1 v2))
+            | VLit(LChar(v1)), Some(VLit(LChar(v2))) -> VLit(LBool(opc v1 v2))
+            | VLit(LString(v1)), Some(VLit(LString(v2))) -> VLit(LBool(ops v1 v2))
+            | _ -> unexpected_error "invalid evaluation with ="
+
+
+        let match_diseg v1 v2 (opi,opf)=
+            match v1,v2 with
+            | VLit(LInt(v1)), Some(VLit(LInt(v2))) -> VLit(LBool(opi v1 v2))
+            | VLit(LFloat(v1)), Some(VLit(LFloat(v2))) -> VLit(LBool(opf v1 v2))
+            | _ -> unexpected_error "invalid evaluation with ="
+
+
+        let match_num_expr v1 v2 (opi,opf) =
+            match v1,v2 with
+            | VLit(LInt(v1)), Some(VLit(LInt(v2))) -> VLit(LInt(opi v1 v2))
+            | VLit(LFloat(v1)), Some(VLit(LFloat(v2))) -> VLit(LFloat(opf v1 v2))
+            | _ -> unexpected_error "invalid evaluation with ="
+
+
+        let match_log_op v1 v2 opb =
+            match v1,v2 with
+            | VLit(LBool(v1)), Some(VLit(LBool(v2))) -> VLit(LBool(opb v1 v2))
+            | _ -> unexpected_error "invalid evaluation with ="
+
+
         match op with
-        | "+" -> cur_eval_op (Int_int_int (+))
-        | "-" -> cur_eval_op (Int_int_int (-))
-        | "*" -> cur_eval_op (Int_int_int (*))
-        | "/" -> cur_eval_op (Int_int_int (/))
-        | "%" -> cur_eval_op (Int_int_int (%))
-        | "=" -> eval_eq_op v1 v2 
-        | ">=" -> cur_eval_op (Int_int_bool (>=))
-        | "<=" -> cur_eval_op(Int_int_bool (<=))
-        | "and" ->cur_eval_op (Bool_bool_bool (&&))
-        | "or" -> cur_eval_op(Bool_bool_bool (||))
+        | "="  -> match_eq v1 v2 ((=),(=),(=),(=),(=))
+        | "<>" -> match_eq v1 v2 ((<>),(<>),(<>),(<>),(<>))
+        | "+" -> match_num_expr v1 v2 ((+),(+))
+        | "-" -> match_num_expr v1 v2 ((-),(-))
+        | "/" -> match_num_expr v1 v2 ((/),(/))
+        | "*" -> match_num_expr v1 v2 ((*),(*))
+        | "%" -> match_num_expr v1 v2 ((%),(%))
+        | "and" -> match_log_op v1 v2 (&&)
+        | "or" -> match_log_op v1 v2 (||)
+        | ">" -> match_diseg v1 v2 ((>),(>))
+        | ">=" -> match_diseg v1 v2 ((>=),(>=))
+        | "<" -> match_diseg v1 v2 ((<),(<))
+        | "<=" -> match_diseg v1 v2 ((<=),(<=))
         | _ -> unexpected_error "impossible case"
 
     | UnOp(op,e1) ->
+
+        let match_not v1 op_i =
+            match v1 with
+            | VLit(LBool(v1)) -> VLit(LBool(op_i v1))
+            | _ ->  unexpected_error "impossible case"
+
+        let match_negation v1  =
+            match v1 with
+            | VLit(LInt(v1)) -> VLit(LInt(- v1))
+            | VLit(LFloat(v1)) -> VLit(LFloat(- v1))
+            | _ -> unexpected_error "invalid evaluation with ="
+
         let v1 = eval_expr venv e1
         match op with
-        | "not" -> eval_op v1 None (Bool_bool(not))
-        | "-" -> eval_op (VLit(LInt(0))) (Some(v1)) (Int_int_int(-))
+        | "not" -> match_not v1 not
+        | "-" -> match_negation v1 
         | _ -> unexpected_error "impossible case"
 
 
