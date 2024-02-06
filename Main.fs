@@ -27,7 +27,7 @@ let interpret_expr tenv venv e =
     #endif
     // TODO you can invoke the typeinfer_expr here
     // let t = Typing.typecheck_expr tenv e
-    let t,_ = Typing.typeinfer_expr (ty_env_to_scheme_env tenv gamma0) e
+    let t,_ = Typing.typeinfer_expr (ty_env_to_scheme_env tenv [])e
     #if DEBUG
     printfn "type:\t%s" (pretty_ty t)
     #endif
