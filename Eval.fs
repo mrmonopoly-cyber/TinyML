@@ -44,6 +44,22 @@ let rec eval_expr (venv : value env) (e : expr) : value =
 
     | Lambda (x, _, e) -> Closure (venv, x, e)
 
+    | App (Var "head", e1) ->
+        let v1 = ( eval_expr venv e1)
+        match v1 with
+        | VLit(LString s) -> 
+            let res = s[0]
+            VLit (LChar res)
+        | _ -> unexpected_error "invalid type in evaluation, impossible case, bug"
+
+    | App (Var "tail", e1) ->
+        let v1 =  eval_expr venv e1
+        match v1 with
+        | VLit(LString s) -> 
+            let res = s[1..]
+            VLit (LString res)
+        | _ -> unexpected_error "invalid type in evaluation, impossible case, bug"
+
     | App (e1, e2) -> 
         let v1 = eval_expr venv e1
         let v2 = eval_expr venv e2
