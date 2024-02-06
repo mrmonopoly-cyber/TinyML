@@ -279,8 +279,7 @@ let rec typeinfer_expr (env : scheme env) (e : expr) : ty * subst =
 
     | BinOp (e1, op, e2) ->
         
-        let st_fun (op:string) (supp_types : ty list) (ty_res:ty option) : ty*subst=
-            
+        let st_fun_eq (ty_res:ty option) : ty*subst=
             let t1,s1 = typeinfer_expr env e1
             let env = apply_subst_env env s1
             let t2,s2 = typeinfer_expr env e2
@@ -288,20 +287,50 @@ let rec typeinfer_expr (env : scheme env) (e : expr) : ty * subst =
             let s4 = unify t1 t2
             let s5 = compose_subst s4 s3
             let t1 = apply_subst_ty t1 s5
-            let t2 = apply_subst_ty t2 s5
-            if t1<>t2 then type_error "types in %s does not coincide , given %O %O " op t1 t2
-            if not(List.exists (fun x -> x = t1) supp_types)
-            then type_error "invalid types for operator %s, given %O %O, supported %O" op t1 t2 supp_types
             match ty_res with
             | None -> t1,s5
             | Some t -> t,s5
+
+        let st_fun_ari : ty * subst =
+            let t1,s1 = typeinfer_expr env e1
+            let env = apply_subst_env env s1
+            let t2,s2 = typeinfer_expr env e2
+            let s3 = compose_subst s2 s1 
+            match t1,t2 with
+            | TyVar _, TyVar _ | TyInt _, _ | _ ,TyInt _ ->
+                let s4 = unify t1 TyInt
+                let s5 = unify t2 TyInt
+                let s5 = compose_subst s3 (compose_subst s2 (compose_subst s1 (compose_subst s5 s4)))
+                TyInt,s5
+            | _,_ ->
+                let s4 = unify t1 TyFloat
+                let s5 = unify t2 TyFloat
+                let s5 = compose_subst s3 (compose_subst s2 (compose_subst s1 (compose_subst s5 s4)))
+                TyFloat,s5
+
+        let st_fun_b_exp : ty * subst =
+            let t1,s1 = typeinfer_expr env e1
+            let env = apply_subst_env env s1
+            let t2,s2 = typeinfer_expr env e2
+            let s3 = compose_subst s2 s1 
+            match t1,t2 with
+            | TyVar _, TyVar _ | TyInt _, _ | _ ,TyInt _ ->
+                let s4 = unify t1 TyInt
+                let s5 = unify t2 TyInt
+                let s5 = compose_subst s3 (compose_subst s2 (compose_subst s1 (compose_subst s5 s4)))
+                TyBool,s5
+            | _,_ ->
+                let s4 = unify t1 TyFloat
+                let s5 = unify t2 TyFloat
+                let s5 = compose_subst s3 (compose_subst s2 (compose_subst s1 (compose_subst s5 s4)))
+                TyBool,s5
             
                     
         match op with
-        |( "+" | "-" | "*" | "/" | "%") as op -> st_fun op [TyInt;TyFloat] None
-        |( "and" | "or") as op -> st_fun op [TyBool] (Some TyBool)
-        |(">=" | "<=" | "<" | ">") as op-> st_fun op [TyInt;TyFloat] None
-        |("=" | "<>") as op -> st_fun op [TyFloat;TyInt;TyBool;TyChar;TyString] (Some TyBool)
+        | "+" | "-" | "*" | "/" | "%" -> st_fun_ari 
+        | "and" | "or" -> st_fun_b_exp 
+        |">=" | "<=" | "<" | ">" -> st_fun_b_exp 
+        |"=" | "<>" -> st_fun_eq (Some TyBool)
         | _ -> unexpected_error "operator not supported"
 
     | UnOp(op,e) ->
@@ -311,8 +340,13 @@ let rec typeinfer_expr (env : scheme env) (e : expr) : ty * subst =
             let s2 = unify t1 TyBool
             TyArrow(t1,TyBool),compose_subst s2 s1
         | "-" ->
-            let s2 = unify t1 TyInt
-            TyArrow(t1,TyInt),compose_subst s2 s1
+            match t1 with
+            | TyFloat _ -> 
+                let s2 = unify t1 TyFloat
+                TyArrow(t1,TyFloat),compose_subst s2 s1
+            | _ ->
+                let s2 = unify t1 TyInt
+                TyArrow(t1,TyInt),compose_subst s2 s1
         | _ -> type_error "invalid unary operator %O" op
 
     // | _ -> unexpected_error "typeinfer_expr: unsupported expression: %s [AST: %A]" (pretty_expr e) e
