@@ -131,8 +131,7 @@ let inst (Forall (tvs,t): scheme) : ty =
             then 
                 tyi
             else
-                let res = Set.minElement sub
-                let _,t = res
+                let _,t = Set.minElement sub
                 TyVar t
         | TyArrow (t1,t2) ->
             TyArrow ((re t1 ty_l),(re t2 ty_l))
@@ -140,7 +139,7 @@ let inst (Forall (tvs,t): scheme) : ty =
             let fr_list = List.map (fun x -> re x ty_l) tylist
             TyTuple fr_list
 
-    let tvs_new = Set.map (fun x -> (x,x + c_new_var ())) tvs
+    let tvs_new = Set.map (fun x -> (x,c_new_var ())) tvs
     
     re t tvs_new
 
@@ -279,19 +278,17 @@ let rec typeinfer_expr (env : scheme env) (e : expr) : ty * subst =
 
     | BinOp (e1, op, e2) ->
         
-        let st_fun_eq (ty_res:ty option) : ty*subst=
+        let st_fun_eq (): ty*subst=
             let t1,s1 = typeinfer_expr env e1
             let env = apply_subst_env env s1
             let t2,s2 = typeinfer_expr env e2
             let s3 = compose_subst s2 s1 
             let s4 = unify t1 t2
             let s5 = compose_subst s4 s3
-            let t1 = apply_subst_ty t1 s5
-            match ty_res with
-            | None -> t1,s5
-            | Some t -> t,s5
+            TyBool,s5
 
-        let st_fun_ari : ty * subst =
+        
+        let st_fun_ari (): ty * subst =
             let t1,s1 = typeinfer_expr env e1
             let env = apply_subst_env env s1
             let t2,s2 = typeinfer_expr env e2
@@ -308,7 +305,7 @@ let rec typeinfer_expr (env : scheme env) (e : expr) : ty * subst =
                 let s5 = compose_subst s3 (compose_subst s2 (compose_subst s1 (compose_subst s5 s4)))
                 TyFloat,s5
 
-        let st_fun_b_exp : ty * subst =
+        let st_fun_b_exp () : ty * subst =
             let t1,s1 = typeinfer_expr env e1
             let env = apply_subst_env env s1
             let t2,s2 = typeinfer_expr env e2
@@ -325,7 +322,7 @@ let rec typeinfer_expr (env : scheme env) (e : expr) : ty * subst =
                 let s5 = compose_subst s3 (compose_subst s2 (compose_subst s1 (compose_subst s5 s4)))
                 TyBool,s5
             
-        let st_fun_bool : ty * subst =
+        let st_fun_bool () : ty * subst =
             let t1,s1 = typeinfer_expr env e1
             let s2 = unify t1 TyBool
             let s3 = compose_subst s2 s1
@@ -336,10 +333,10 @@ let rec typeinfer_expr (env : scheme env) (e : expr) : ty * subst =
             TyBool,s6
                     
         match op with
-        | "+" | "-" | "*" | "/" | "%" -> st_fun_ari 
-        | "and" | "or" -> st_fun_bool 
-        |">=" | "<=" | "<" | ">" -> st_fun_b_exp 
-        |"=" | "<>" -> st_fun_eq (Some TyBool)
+        | "+" | "-" | "*" | "/" | "%" -> st_fun_ari ()
+        | "and" | "or" -> st_fun_bool ()
+        | "=" | "<>" -> st_fun_eq ()
+        |">=" | "<=" | "<" | ">" -> st_fun_b_exp ()
         | _ -> unexpected_error "operator not supported"
 
     | UnOp(op,e) ->
