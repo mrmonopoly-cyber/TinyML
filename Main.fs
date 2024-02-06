@@ -15,8 +15,8 @@ let rec ty_env_to_scheme_env (ty_env : ty env) (sc_env :scheme env): scheme env 
     match ty_env with
     | (str,typ) :: tail ->
         let conv_scheme = gen sc_env typ
-        let sc_env = [str,conv_scheme]
-        ty_env_to_scheme_env tail sc_env
+        let sc_env_add = [str,conv_scheme]
+        ty_env_to_scheme_env  tail (sc_env_add @ sc_env)
     | _ -> sc_env   
 
 let parse_from_TextReader rd filename parser = Parsing.parse_from_TextReader SyntaxError rd filename (1, 1) parser Lexer.tokenize Parser.tokenTagToTokenId

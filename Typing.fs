@@ -151,12 +151,11 @@ let inst (Forall (tvs,t): scheme) : ty =
 // basic environment: add builtin operators at will
 //
 
-let gamma0 = [
-    ("head", TyArrow (TyString, TyString))
-    ("tail", TyArrow (TyString, TyString))
-    ("::", TyArrow (TyString, TyString))
+let gamma0 = [ 
+    ("head", TyArrow (TyString, TyString));
+    ("tail", TyArrow (TyString, TyString));
+    ("::", TyArrow (TyString, TyString));
 ]
-
 
 // type inference
 //
