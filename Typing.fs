@@ -113,10 +113,10 @@ let rec lookup_scheme_env (env : scheme env) (x : string) : scheme =
         else lookup_scheme_env tail x
     | [] -> type_error "variable %O not declared" x
 
-let mutable new_var: tyvar = 0
 
-let c_new_var : tyvar=
-    let mutable new_var :tyvar= 0
+let mutable new_var :tyvar= 0
+
+let c_new_var (): tyvar=
     new_var <- new_var + 1
     new_var
 
@@ -140,7 +140,7 @@ let inst (Forall (tvs,t): scheme) : ty =
             let fr_list = List.map (fun x -> re x ty_l) tylist
             TyTuple fr_list
 
-    let tvs_new = Set.map (fun x -> (x,x + c_new_var)) tvs
+    let tvs_new = Set.map (fun x -> (x,x + c_new_var ())) tvs
     
     re t tvs_new
 
@@ -184,7 +184,7 @@ let rec typeinfer_expr (env : scheme env) (e : expr) : ty * subst =
         sch_ty,[]
 
     | Lambda(str,t,e) ->
-        let a = TyVar(c_new_var)
+        let a = TyVar(c_new_var ())
         let l_scheme = Forall(Set.empty,a)
         let env = (str,l_scheme) :: env
         let t2,s1 = typeinfer_expr env e
@@ -198,7 +198,7 @@ let rec typeinfer_expr (env : scheme env) (e : expr) : ty * subst =
         let t1,s1 = typeinfer_expr env e1
         let env = apply_subst_env env s1
         let t2,s2 = typeinfer_expr env e2
-        let fresh_var = TyVar c_new_var
+        let fresh_var = TyVar (c_new_var ())
         let s3 = unify t1 (TyArrow(t2,fresh_var))
         let sf = compose_subst s3 s2
         let tf = apply_subst_ty fresh_var s3
@@ -234,11 +234,12 @@ let rec typeinfer_expr (env : scheme env) (e : expr) : ty * subst =
                 let env = apply_subst_env env s
                 let ti,si = typeinfer_expr env head
                 let tlj,sj = tu_lis tail (compose_subst si s)
-                (ti::tlj),sj
+                (tlj@[ti]),(compose_subst sj si)
             | [] -> [],s
 
         let ts,s = tu_lis e_list []
-        TyTuple(ts),s
+        let tr = apply_subst_ty (TyTuple ts) s
+        tr,s
 
     //| Let(n_var,t,e_let,e_in) ->
     | LetIn((false,n_var,t,e_let),e_in) ->
@@ -255,7 +256,7 @@ let rec typeinfer_expr (env : scheme env) (e : expr) : ty * subst =
     
     | LetIn((true,n_var,t,e_let),e_in) ->
         let main = 
-            let fresh = TyVar c_new_var
+            let fresh = TyVar (c_new_var ())
             let new_con = n_var,(Forall(Set.empty,fresh))
             let env = new_con :: env
             let t1,s1 = typeinfer_expr env e_let
