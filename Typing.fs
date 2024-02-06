@@ -152,7 +152,7 @@ let inst (Forall (tvs,t): scheme) : ty =
 //
 
 let gamma0 = [ 
-    ("head", TyArrow (TyString, TyString));
+    ("head", TyArrow (TyString, TyChar));
     ("tail", TyArrow (TyString, TyString));
     ("::", TyArrow (TyString, TyString));
 ]
