@@ -224,7 +224,7 @@ let rec typeinfer_expr (env : scheme env) (e : expr) : ty * subst =
         let t3,s7 = else_branch e3 env s5
         let s8 = unify (apply_subst_ty t2 s7) (apply_subst_ty t3 s7)
         let s_res = compose_subst s8 s7
-        let ty_res = apply_subst_ty t2 s8
+        let ty_res = apply_subst_ty t2 s_res
         ty_res,s_res
     
     | Tuple(e_list) ->
@@ -297,7 +297,8 @@ let rec typeinfer_expr (env : scheme env) (e : expr) : ty * subst =
                 let t1 = apply_subst_ty t1 s7
                 if t1<>t2 then type_error "error in = given %O %O " t1 t2
                 tyr,s7
-            else tyr,s6
+            else 
+                tyr,s6
             
                     
         match op with
