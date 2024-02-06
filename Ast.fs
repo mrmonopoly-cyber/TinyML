@@ -153,7 +153,16 @@ let rec pretty_expr e =
     
     // TODO write a better pretty-printer that puts brackets on non-trivial expressions appearing on the right side of an application
     | App (e1, e2) -> 
-        sprintf "%s %s" (pretty_expr e1) (pretty_expr e2)
+        let match_e (ei :expr) =
+            match ei with
+            | App _ | BinOp _ | App _ | Lambda _ -> true
+            | _ -> false
+
+        match (match_e e1),(match_e e2) with
+        | true , true -> sprintf  "(%s) (%s)" (pretty_expr e1) (pretty_expr e2)
+        | false, true -> sprintf  "%s (%s)" (pretty_expr e1) (pretty_expr e2)
+        | true, false-> sprintf  "(%s) %s" (pretty_expr e1) (pretty_expr e2)
+        | false, false-> sprintf  "%s %s" (pretty_expr e1) (pretty_expr e2)
 
     | Var x -> x
 
