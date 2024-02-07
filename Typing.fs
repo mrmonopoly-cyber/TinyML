@@ -103,7 +103,7 @@ let rec compose_subst (s1 : subst) (s2 : subst) : subst =
                 else
                     let _,tp : tyvar * ty = (List.find (fun (tv,_) -> tv=head_v) t_v_p)
                     let res : subst = unify head_t tp
-                    is_more_precise res tail
+                    is_more_precise (compose_subst res t_v_p) tail
             //end scope1
         match comp with
         | [] -> []
