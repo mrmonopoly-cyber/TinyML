@@ -119,14 +119,17 @@ let pretty_tupled p l = flatten p ", " l
 
 let rec pretty_ty t =
     
-    let alphabet = seq{'a'..'b'..'z'}
-    let alapha_length = Seq.length alphabet
+    let alphabet = ['a';'b';'c';'d';'e';'f';'g';'h';'i';'j';'k';'l';'m';'n';'o';'p';'q';'r';'s';'t';'u';'v';'x';'y';'z']
+    let alapha_length = List.length alphabet
 
-    let rec conv_int_str num :string=
+    let rec conv_int_str num =
         let carry = num % alapha_length
         let div_int = num / alapha_length
-        let carry_first :char= Seq.last(Seq.take carry alphabet)
-        (conv_int_str div_int) + (string carry_first)
+        let carry_first :char= List.last(List.take carry alphabet)
+        if div_int > 0
+        then (conv_int_str div_int) + (carry_first.ToString())
+        else carry_first.ToString()
+
 
 
     match t with
