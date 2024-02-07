@@ -232,7 +232,7 @@ let rec typeinfer_expr (env : scheme env) (e : expr) : ty * subst =
         let fresh_var = TyVar (c_new_var ())
         let s3 = unify t1 (TyArrow(t2,fresh_var))
         let sf = compose_subst s3 s2
-        let tf = apply_subst_ty fresh_var s3
+        let tf = apply_subst_ty fresh_var sf
         tf,sf
 
     | IfThenElse(e1,e2,e3) ->
