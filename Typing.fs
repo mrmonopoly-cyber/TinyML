@@ -73,23 +73,13 @@ let rec compose_subst (s1 : subst) (s2 : subst) : subst =
         | [] -> so
         | ((a : tyvar),(tp : ty)) :: (tail :subst) ->
            let new_subs_tuple = (a,apply_subst_ty tp so) 
-           new_subs_tuple :: (apply_sub tail so)
+           if List.exists (fun x -> x = new_subs_tuple) so
+           then 
+               (apply_sub tail so)
+           else
+            new_subs_tuple :: (apply_sub tail so)
     
     let rec filter (sub_l : subst) (sub_res : subst) : subst =
-        
-        let rec resolve_ambiguity (rsub:tyvar*ty) (ambiguity:subst) : subst =
-            match ambiguity,rsub with
-            | [],s -> [s]
-            | (_,TyVar b)::tail, (rv,TyVar a) -> 
-                if a<>b then type_error "type error, ammiguity type for variable %O, possibile: %O %O" rv (TyVar b) (TyVar a)
-                resolve_ambiguity rsub tail
-            | (_,TyVar _)::tail, (_,_) ->
-                resolve_ambiguity rsub tail
-            | (_,new_t)::tail, (rv,TyVar _) ->
-                resolve_ambiguity (rv,new_t) tail
-            | (_,a)::tail , (rv,b)->
-                if a<>b then type_error "type error, ammiguity type for variable %O, possibile: %O %O" rv b a
-                resolve_ambiguity rsub tail
 
         match sub_l with
         | [] -> sub_res
@@ -99,14 +89,14 @@ let rec compose_subst (s1 : subst) (s2 : subst) : subst =
                 filter tail sub_res
             else 
                 let (ty_ambiguity_tuples:subst)= List.filter (fun (tv,typ1) -> tv = ty_v && typ <> typ1) tail
-                let final_sub = resolve_ambiguity (ty_v,typ) ty_ambiguity_tuples
                 let clean_tail = List.filter (fun (v,_) -> v<>ty_v) tail
+                let final_sub : subst= apply_sub ty_ambiguity_tuples sub_l
                 filter clean_tail (final_sub @ sub_res)
             
     let first = apply_sub s1 s2
     let comp = apply_sub first s1
-
-    filter comp []
+    comp
+    // filter comp []
 
 
 
