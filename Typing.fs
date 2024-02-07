@@ -95,19 +95,16 @@ let rec compose_subst (s1 : subst) (s2 : subst) : subst =
     //scope2
         let rec is_more_precise ((tyv,tp) as t_v_p: tyvar*ty) (sub_l : subst) : (tyvar*ty) = 
             //scope1
-            let more_precise_ty (t1:ty) (t2:ty) : ty = 
-                let free_var_t1 : int = Set.count( freevars_ty t1 )
-                let free_var_t2 : int = Set.count( freevars_ty t2 )
-                if free_var_t1 <= free_var_t2 then t1 else t2
-
             match sub_l with 
             | [] -> t_v_p
             | (head_v,head_t):: tail ->
                 if head_v <> tyv 
                 then is_more_precise t_v_p tail
                 else
-                    let res : tyvar*ty = (head_v,more_precise_ty head_t tp)
-                    is_more_precise res tail
+                    let res : subst = unify head_t tp
+                    match res with
+                    | [] -> type_error "error composition"
+                    | head::_ -> is_more_precise head tail
             //end scope1
         match comp with
         | [] -> []
