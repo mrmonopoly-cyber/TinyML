@@ -93,25 +93,24 @@ let rec compose_subst (s1 : subst) (s2 : subst) : subst =
 
     let rec filter (comp:subst) : subst =
     //scope2
-        let rec is_more_precise ((tyv,tp) as t_v_p: tyvar*ty) (sub_l : subst) : (tyvar*ty) = 
+        let rec is_more_precise ( t_v_p: subst) (sub_l : subst) : subst = 
             //scope1
             match sub_l with 
             | [] -> t_v_p
             | (head_v,head_t):: tail ->
-                if head_v <> tyv 
+                if not(List.exists (fun (tv,_) -> tv=head_v) t_v_p)
                 then is_more_precise t_v_p tail
                 else
+                    let _,tp : tyvar * ty = (List.find (fun (tv,_) -> tv=head_v) t_v_p)
                     let res : subst = unify head_t tp
-                    match res with
-                    | [] -> type_error "error composition"
-                    | head::_ -> is_more_precise head tail
+                    is_more_precise res tail
             //end scope1
         match comp with
         | [] -> []
         | (tyv_head,_) as head::tail -> 
-            let precise : tyvar*ty= is_more_precise head tail
+            let precise : subst= is_more_precise [head] tail
             let filter_tail : subst= List.filter (fun (tyv,_) -> tyv<>tyv_head) tail
-            precise :: filter filter_tail
+            precise @ filter filter_tail
     //end scope2
 
     let first = apply_sub s1 s2
