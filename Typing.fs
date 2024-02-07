@@ -46,20 +46,6 @@ let rec apply_subst_env (env : scheme env) (s : subst) : scheme env =
         (str,(apply_subst_scheme sch s))::(apply_subst_env tail s)
     | [] -> []
     
-// TODO implement this
-let rec compose_subst (s1 : subst) (s2 : subst) : subst = 
-    let rec apply_sub  (si:subst) (so:subst) : subst =
-        match si with
-        | [] -> so
-        | ((a : tyvar),(tp : ty)) :: (tail :subst) ->
-           let new_subs_tuple = (a,apply_subst_ty tp so) 
-           new_subs_tuple :: (apply_sub tail so)
-    
-    let first = apply_sub s1 s2
-    let comp =apply_sub first s1
-
-    comp
-
 
 // TODO implement this
 let rec unify (t1 : ty) (t2 : ty) : subst = 
@@ -77,6 +63,51 @@ let rec unify (t1 : ty) (t2 : ty) : subst =
         let res_tail = unify (TyTuple tail1) (TyTuple tail2)
         res_h @ res_tail
     | _ -> type_error "invalid case unification function with type %O %O" t1 t2
+
+
+// TODO implement this
+let rec compose_subst (s1 : subst) (s2 : subst) : subst = 
+
+    let rec apply_sub  (si:subst) (so:subst) : subst =
+        match si with
+        | [] -> so
+        | ((a : tyvar),(tp : ty)) :: (tail :subst) ->
+           let new_subs_tuple = (a,apply_subst_ty tp so) 
+           new_subs_tuple :: (apply_sub tail so)
+    
+    let rec filter (sub_l : subst) (sub_res : subst) : subst =
+        
+        let rec resolve_ambiguity (rsub:tyvar*ty) (ambiguity:subst) : subst =
+            match ambiguity,rsub with
+            | [],s -> [s]
+            | (_,TyVar b)::tail, (rv,TyVar a) -> 
+                if a<>b then type_error "type error, ammiguity type for variable %O, possibile: %O %O" rv (TyVar b) (TyVar a)
+                resolve_ambiguity rsub tail
+            | (_,TyVar _)::tail, (_,_) ->
+                resolve_ambiguity rsub tail
+            | (_,new_t)::tail, (rv,TyVar _) ->
+                resolve_ambiguity (rv,new_t) tail
+            | (_,a)::tail , (rv,b)->
+                if a<>b then type_error "type error, ammiguity type for variable %O, possibile: %O %O" rv b a
+                resolve_ambiguity rsub tail
+
+        match sub_l with
+        | [] -> sub_res
+        | (ty_v, typ) :: tail ->
+            if (List.exists (fun (tv,_) -> tv=ty_v) sub_res ) 
+            then 
+                filter tail sub_res
+            else 
+                let (ty_ambiguity_tuples:subst)= List.filter (fun (tv,typ1) -> tv = ty_v && typ <> typ1) tail
+                let final_sub = resolve_ambiguity (ty_v,typ) ty_ambiguity_tuples
+                let clean_tail = List.filter (fun (v,_) -> v<>ty_v) tail
+                filter clean_tail (final_sub @ sub_res)
+            
+    let first = apply_sub s1 s2
+    let comp = apply_sub first s1
+
+    filter comp []
+
 
 
 // TODO implement this
