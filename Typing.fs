@@ -66,6 +66,18 @@ let rec unify (t1 : ty) (t2 : ty) : subst =
 
 
 // TODO implement this
+let rec freevars_ty (t:ty) : tyvar Set = 
+    match t with 
+    | TyName _ -> Set.empty
+    | TyVar t -> Set.empty.Add t
+    | TyArrow (t1,t2) -> Set.union (freevars_ty t1) (freevars_ty t2)
+    | TyTuple (list) -> 
+        match list with
+        | head :: tail ->
+            Set.union (freevars_ty head) (freevars_ty (TyTuple tail))
+        | [] -> Set.empty
+
+// TODO implement this
 let rec compose_subst (s1 : subst) (s2 : subst) : subst = 
 
     let rec apply_sub  (si:subst) (so:subst) : subst =
@@ -78,39 +90,38 @@ let rec compose_subst (s1 : subst) (s2 : subst) : subst =
                apply_sub tail so
            else
             new_subs_tuple :: (apply_sub tail so)
-    
-    let rec filter (sub_l : subst) (sub_res : subst) : subst =
 
-        match sub_l with
-        | [] -> sub_res
-        | (ty_v, typ) :: tail ->
-            if (not(List.exists (fun (tv,_) -> tv=ty_v) sub_res ))
-            then 
-                filter tail sub_res
-            else 
-                let (ty_ambiguity_tuples:subst)= List.filter (fun (tv,typ1) -> tv = ty_v && typ <> typ1) tail
-                let clean_tail = List.filter (fun (v,_) -> v<>ty_v) tail
-                let final_sub : subst= apply_sub ty_ambiguity_tuples sub_l
-                filter clean_tail (final_sub @ sub_res)
-            
+    let rec filter (comp:subst) : subst =
+    //scope2
+        let rec is_more_precise ((tyv,tp) as t_v_p: tyvar*ty) (sub_l : subst) : (tyvar*ty) = 
+            //scope1
+            let more_precise_ty (t1:ty) (t2:ty) : ty = 
+                let free_var_t1 : int = Set.count( freevars_ty t1 )
+                let free_var_t2 : int = Set.count( freevars_ty t2 )
+                if free_var_t1 <= free_var_t2 then t1 else t2
+
+            match sub_l with 
+            | [] -> t_v_p
+            | (head_v,head_t):: tail ->
+                if head_v <> tyv 
+                then is_more_precise t_v_p tail
+                else
+                    let res : tyvar*ty = (head_v,more_precise_ty head_t tp)
+                    is_more_precise res tail
+            //end scope1
+        match comp with
+        | [] -> []
+        | (tyv_head,_) as head::tail -> 
+            let precise : tyvar*ty= is_more_precise head tail
+            let filter_tail : subst= List.filter (fun (tyv,_) -> tyv<>tyv_head) tail
+            precise :: filter filter_tail
+    //end scope2
+
     let first = apply_sub s1 s2
     let comp = apply_sub first s1
-    // comp
-    filter comp []
+    filter comp
 
 
-
-// TODO implement this
-let rec freevars_ty (t:ty) : tyvar Set = 
-    match t with 
-    | TyName _ -> Set.empty
-    | TyVar t -> Set.empty.Add t
-    | TyArrow (t1,t2) -> Set.union (freevars_ty t1) (freevars_ty t2)
-    | TyTuple (list) -> 
-        match list with
-        | head :: tail ->
-            Set.union (freevars_ty head) (freevars_ty (TyTuple tail))
-        | [] -> Set.empty
 
 
 // TODO implement this
