@@ -73,10 +73,16 @@ let rec eval_expr (venv : value env) (e : expr) : value =
     | Var x -> lookup venv x
     
     | LetIn (b,e) ->
-        let _,s,_,e1 = b
-        let v1 = eval_expr venv e1
-        let venv' = (s, v1) :: venv
-        eval_expr venv' e
+        let re,s,_,e1 = b
+        if not(re)
+        then 
+            let v1 = eval_expr venv e1
+            let venv' = (s, v1) :: venv
+            eval_expr venv' e
+        else
+            let closure = Closure(venv,s,e1) 
+            let venv' = (s,closure) :: venv
+            eval_expr venv' e
 
     | IfThenElse (eg,e1,None) -> 
         let vg = eval_expr venv eg
