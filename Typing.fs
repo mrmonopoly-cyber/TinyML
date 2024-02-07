@@ -113,35 +113,10 @@ let rec compose_subst (s1 : subst) (s2 : subst) : subst =
             precise @ filter filter_tail
     //end scope2
 
-    let rec find_cycles (cursor: (tyvar*ty) option) (c_list : subst) ((dvar,dtype): tyvar*ty) :tyvar*ty =
-        match cursor with 
-        | None -> find_cycles (Some (dvar,dtype)) c_list (dvar,dtype)
-        | Some(b,typ) ->
-            match typ with
-            | TyVar a -> 
-                if a = dvar 
-                then 
-                    if a<>b
-                    then type_error "cicle found" 
-                    else dvar,dtype
-                else 
-                    let predicate (varx,_) = varx = a
-                    if List.exists (predicate) c_list
-                    then 
-                        let cursor = List.find (predicate) c_list
-                        find_cycles (Some cursor) c_list (dvar,dtype)
-                    else
-                        dvar,dtype
-            | _ -> dvar,dtype
-
-               
     let first = apply_sub s1 s2
     let comp = apply_sub first s1
     let filtered :subst= filter comp
-    if List.isEmpty filtered 
-    then filtered
-    else List.map (find_cycles None filtered) filtered 
-
+    filtered 
 
 // TODO implement this
 let freevars_scheme (Forall (tvs, t)) : tyvar Set = 
