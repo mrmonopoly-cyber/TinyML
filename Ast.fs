@@ -118,20 +118,24 @@ let pretty_env p env = sprintf "[%s]" (flatten (fun (x, o) -> sprintf "%s=%s" x 
 let pretty_tupled p l = flatten p ", " l
 
 let rec pretty_ty t =
+    
+    let alphabet = seq{'a'..'b'..'z'}
+    let alapha_length = Seq.length alphabet
+
+    let rec conv_int_str num :string=
+        let carry = num % alapha_length
+        let div_int = num / alapha_length
+        let carry_first :char= Seq.last(Seq.take carry alphabet)
+        (conv_int_str div_int) + (string carry_first)
+
+
     match t with
     | TyName s -> s
     | TyArrow (t1, t2) -> 
         let v1 = pretty_ty t1
         let v2 = pretty_ty t2
-        match t1,t2 with
-        | TyArrow _,TyArrow _ ->
-            sprintf "(%s) -> (%s)" v1 v2
-        | TyArrow _, _ ->
-            sprintf "(%s) -> %s" v1 v2
-        | _,TyArrow _ ->
-            sprintf "%s -> (%s)" v1 v2
-        | _ ->   sprintf "%s -> %s" v1 v2
-    | TyVar n -> sprintf "'%d" n
+        sprintf "%s -> %s" v1 v2
+    | TyVar n -> sprintf "'%s" (conv_int_str n)
     | TyTuple ts -> sprintf "(%s)" (pretty_tupled pretty_ty ts)
 
 let pretty_lit lit =
