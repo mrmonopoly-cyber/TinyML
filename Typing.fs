@@ -73,15 +73,18 @@ let rec compose_subst (s1 : subst) (s2 : subst) : subst =
         | [] -> so
         | ((a : tyvar),(tp : ty)) :: (tail :subst) ->
            let new_subs_tuple = (a,apply_subst_ty tp so) 
-           let new_so = List.filter (fun (v,_) -> v<>a) so
-           new_subs_tuple :: (apply_sub tail new_so)
+           if List.exists (fun x -> x = new_subs_tuple) so
+           then 
+               apply_sub tail so
+           else
+            new_subs_tuple :: (apply_sub tail so)
     
     let rec filter (sub_l : subst) (sub_res : subst) : subst =
 
         match sub_l with
         | [] -> sub_res
         | (ty_v, typ) :: tail ->
-            if (List.exists (fun (tv,_) -> tv=ty_v) sub_res ) 
+            if (not(List.exists (fun (tv,_) -> tv=ty_v) sub_res ))
             then 
                 filter tail sub_res
             else 
@@ -92,8 +95,8 @@ let rec compose_subst (s1 : subst) (s2 : subst) : subst =
             
     let first = apply_sub s1 s2
     let comp = apply_sub first s1
-    comp
-    // filter comp []
+    // comp
+    filter comp []
 
 
 
