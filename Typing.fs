@@ -98,12 +98,12 @@ let rec compose_subst (s1 : subst) (s2 : subst) : subst =
             match sub_l with 
             | [] -> t_v_p
             | (head_v,head_t):: tail ->
-                if not(List.exists (fun (tv,_) -> tv=head_v) t_v_p)
+                if not(List.exists (fun (tv,_) -> (tv=head_v))  t_v_p)
                 then is_more_precise t_v_p tail
                 else
-                    let _,tp : tyvar * ty = (List.find (fun (tv,_) -> tv=head_v) t_v_p)
+                    let _,tp : tyvar * ty = (List.find (fun (tv,_) -> tv=head_v ) t_v_p)
                     let res : subst = unify head_t tp
-                    is_more_precise (compose_subst res t_v_p) tail
+                    res @ (is_more_precise t_v_p tail)
             //end scope1
         match comp with
         | [] -> []
