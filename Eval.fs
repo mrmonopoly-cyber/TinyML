@@ -25,16 +25,6 @@ type op_fun =
     | Int_bool of (int->bool)
 
 
-
-    
-let eval_if_else (vg:value) v1 v2 =
-    match vg with 
-    | VLit(LBool(g)) -> 
-        match g with
-        | true -> v1
-        | false -> v2
-    | _ ->  unexpected_error "impossible case"
-
 // evaluator
 //
 
@@ -68,6 +58,10 @@ let rec eval_expr (venv : value env) (e : expr) : value =
             let venv' = (x, v2) :: venv'
             eval_expr venv' e
 
+        | RecClosure (venv', x, input, e) ->
+            let venv' = (input, v2) :: (x ,v1) :: venv'
+            eval_expr venv' e
+ 
         | _ -> unexpected_error "non-closure on left hand of application"
 
     | Var x -> lookup venv x
@@ -80,20 +74,30 @@ let rec eval_expr (venv : value env) (e : expr) : value =
             let venv' = (s, v1) :: venv
             eval_expr venv' e
         else
-            let closure = Closure(venv,s,e1) 
-            let venv' = (s,closure) :: venv
-            eval_expr venv' e
+            let v1  = eval_expr venv e1 
+            match v1 with
+            | Closure(env,str,ei) ->
+                let venv' = (s,RecClosure(env,s,str,ei)) :: venv
+                eval_expr venv' e
+            | _ -> unexpected_error "evalutation bug"
 
     | IfThenElse (eg,e1,None) -> 
         let vg = eval_expr venv eg
-        let v1 = eval_expr venv e1
-        eval_if_else vg v1 (VLit(LUnit))
+        match vg with 
+        | VLit(LBool(g)) ->
+            match g with
+            | true -> eval_expr venv e1
+            | false -> (VLit(LUnit))
+        | _ ->  unexpected_error "impossible case"
 
     | IfThenElse (eg,e1,Some(e2)) -> 
         let vg = eval_expr venv eg
-        let v1 = eval_expr venv e1
-        let v2 = eval_expr venv e2
-        eval_if_else vg v1 v2
+        match vg with 
+        | VLit(LBool(g)) -> 
+            match g with
+            | true -> eval_expr venv e1
+            | false -> eval_expr venv e2
+        | _ ->  unexpected_error "impossible case"
 
     | Tuple(el) -> VTuple(List.map (eval_expr venv) el)
 
