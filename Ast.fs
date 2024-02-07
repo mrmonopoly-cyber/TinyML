@@ -137,7 +137,11 @@ let rec pretty_ty t =
     | TyArrow (t1, t2) -> 
         let v1 = pretty_ty t1
         let v2 = pretty_ty t2
-        sprintf "%s -> %s" v1 v2
+        match t1,t2 with
+        | TyArrow _, _ -> sprintf "(%s) -> %s" v1 v2
+        | _,TyArrow _ -> sprintf "%s -> (%s)" v1 v2
+        | TyArrow _, TyArrow _ -> sprintf "(%s) -> %s" v1 v2
+        | _,_-> sprintf "%s -> %s" v1 v2
     | TyVar n -> sprintf "'%s" (conv_int_str n)
     | TyTuple ts -> sprintf "(%s)" (pretty_tupled pretty_ty ts)
 
