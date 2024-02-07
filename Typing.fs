@@ -113,25 +113,28 @@ let rec compose_subst (s1 : subst) (s2 : subst) : subst =
             precise @ filter filter_tail
     //end scope2
 
-    let rec find_cycles  (cursor:(tyvar*ty)option) (c_list:subst) ((tyv,typ): tyvar*ty) : tyvar*ty= 
-        match cursor with
-        | None -> find_cycles (Some (tyv,typ)) c_list (tyv,typ)
-        | Some (tvc,tpc) -> 
-            match tpc with
-            | TyVar a ->
-                if a=tyv && tvc<>tyv
-                then type_error "ciclyc found"
+    let rec find_cycles (cursor: (tyvar*ty) option) (c_list : subst) ((dvar,dtype): tyvar*ty) :tyvar*ty =
+        match cursor with 
+        | None -> find_cycles (Some (dvar,dtype)) c_list (dvar,dtype)
+        | Some(b,typ) ->
+            match typ with
+            | TyVar a -> 
+                if a = dvar 
+                then 
+                    if a<>b
+                    then type_error "cicle found" 
+                    else dvar,dtype
                 else 
-                    let predicate (vt,_) = vt=a 
-                    let cursor = 
-                        if List.exists (predicate) c_list 
-                        then List.find (predicate) c_list
-                        else tyv,typ
-                    find_cycles (Some cursor) c_list (tyv,typ)
-            | _ -> tyv,typ
+                    let predicate (varx,_) = varx = a
+                    if List.exists (predicate) c_list
+                    then 
+                        let cursor = List.find (predicate) c_list
+                        find_cycles (Some cursor) c_list (dvar,dtype)
+                    else
+                        dvar,dtype
+            | _ -> dvar,dtype
 
-
-            
+               
     let first = apply_sub s1 s2
     let comp = apply_sub first s1
     let filtered :subst= filter comp
