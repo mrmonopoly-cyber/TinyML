@@ -112,11 +112,34 @@ let rec compose_subst (s1 : subst) (s2 : subst) : subst =
             let filter_tail : subst= List.filter (fun (tyv,_) -> tyv<>tyv_head) tail
             precise @ filter filter_tail
     //end scope2
+    let rec find_cycle (cursor :(tyvar*ty)option) (list_e : subst) ((l_var,l_typ): tyvar*ty) : tyvar*ty = 
+       match cursor with
+       | None -> find_cycle (Some (l_var,l_typ)) list_e (l_var,l_typ)
+       | Some (c_var,c_typ) ->
+           match c_typ with
+           | TyVar a ->
+               if a = l_var 
+               then 
+                   if c_var = a
+                   then 
+                       (l_var,l_typ)
+                    else
+                       type_error "cycle found in substitution function"
+                else
+                    let predicate (p_v,_) = p_v = a
+                    if List.exists (predicate) list_e
+                    then 
+                        let cursor = List.find (predicate) list_e
+                        find_cycle (Some(cursor)) list_e (l_var,l_typ)
+                    else
+                        (l_var,l_typ)
+            | _ -> (l_var,l_typ)
+
 
     let first = apply_sub s1 s2
     let comp = apply_sub first s1
     let filtered :subst= filter comp
-    filtered 
+    List.map (find_cycle None filtered) filtered
 
 // TODO implement this
 let freevars_scheme (Forall (tvs, t)) : tyvar Set = 
