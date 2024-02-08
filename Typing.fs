@@ -114,17 +114,18 @@ let rec compose_subst (s1 : subst) (s2 : subst) : subst =
     //end scope2
     let rec find_cycle (cursor :(tyvar*ty)option) (list_e : subst) ((l_var,l_typ): tyvar*ty) : tyvar*ty = 
         
-        let rec subst_itself (s_var:tyvar) (t:ty) : bool =
+        let rec subst_itself (s_var:tyvar) (valid:bool) (t:ty)  : bool =
             match t with
-            | TyName _ | TyVar _ -> false
+            | TyName _ -> false
+            | TyVar a -> (a = s_var) && not(valid)
             | TyArrow (t1,t2) -> 
-                (subst_itself s_var t1) || (subst_itself s_var t2)
+                (subst_itself s_var false t1) || (subst_itself s_var false t2)
             | TyTuple (t_list) ->
-                List.exists (subst_itself s_var) t_list
+                List.exists (subst_itself s_var false) t_list
 
-        if not(subst_itself l_var l_typ) 
+        if not(subst_itself l_var true l_typ) 
         then (l_var,l_typ)
-        else type_error "cyclic substitution of var %O in its type %O" (pretty_ty (TyVar l_var)) l_typ
+        else type_error "cyclic substitution of var %O in its type %O" (pretty_ty (TyVar l_var)) (pretty_ty l_typ)
 
     let first = apply_sub s1 s2
     let comp = apply_sub first s1
