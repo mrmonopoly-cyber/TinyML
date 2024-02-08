@@ -123,7 +123,27 @@ let rec compose_subst (s1 : subst) (s2 : subst) : subst =
             | TyTuple (t_list) ->
                 List.exists (subst_itself s_var false) t_list
 
-        if not(subst_itself l_var true l_typ) 
+        let rec loopback_var (cursor: (tyvar*ty)option) (list_e : subst) ((l_var,l_typ) : tyvar*ty) :bool= 
+            match cursor with
+            | None -> loopback_var (Some (l_var,l_typ)) list_e (l_var,l_typ)
+            | Some (c_var,c_typ) ->
+                match c_typ with
+                | TyVar a ->
+                    if a = c_var 
+                    then false
+                    else if a = l_var
+                    then true
+                    else
+                        let predicate (p_var,_) = p_var = a
+                        if List.exists (predicate) list_e 
+                        then
+                            let cursor = Some(List.find (predicate) list_e)
+                            loopback_var cursor list_e (l_var,l_typ)
+                        else
+                            false
+                | _ -> false
+
+        if (not(subst_itself l_var true l_typ)) && (not(loopback_var cursor list_e (l_var,l_typ)))
         then (l_var,l_typ)
         else type_error "cyclic substitution of var %O in its type %O" (pretty_ty (TyVar l_var)) (pretty_ty l_typ)
 
