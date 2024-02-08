@@ -118,21 +118,19 @@ let rec compose_subst (s1 : subst) (s2 : subst) : subst =
        | Some (c_var,c_typ) ->
            match c_typ with
            | TyVar a ->
-               if a = l_var 
-               then 
-                   if c_var = a
-                   then 
-                       (l_var,l_typ)
-                    else
-                       type_error "cycle found in substitution function"
-                else
-                    let predicate (p_v,_) = p_v = a
-                    if List.exists (predicate) list_e
+               if c_var = a then (l_var,l_typ) 
+               else
+                    if a = l_var 
                     then 
-                        let cursor = List.find (predicate) list_e
-                        find_cycle (Some(cursor)) list_e (l_var,l_typ)
+                        type_error "cycle found in substitution function"
                     else
-                        (l_var,l_typ)
+                        let predicate (p_v,_) = p_v = a
+                        if List.exists (predicate) list_e
+                        then 
+                            let cursor = List.find (predicate) list_e
+                            find_cycle (Some(cursor)) list_e (l_var,l_typ)
+                        else
+                            (l_var,l_typ)
             | _ -> (l_var,l_typ)
 
 
