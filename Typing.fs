@@ -116,8 +116,7 @@ let rec compose_subst (s1 : subst) (s2 : subst) : subst =
         
         let rec subst_itself (s_var:tyvar) (t:ty) : bool =
             match t with
-            | TyName _ -> false
-            | TyVar a -> a = s_var
+            | TyName _ | TyVar _ -> false
             | TyArrow (t1,t2) -> 
                 (subst_itself s_var t1) || (subst_itself s_var t2)
             | TyTuple (t_list) ->
