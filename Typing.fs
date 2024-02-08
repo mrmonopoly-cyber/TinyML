@@ -113,25 +113,38 @@ let rec compose_subst (s1 : subst) (s2 : subst) : subst =
             precise @ filter filter_tail
     //end scope2
     let rec find_cycle (cursor :(tyvar*ty)option) (list_e : subst) ((l_var,l_typ): tyvar*ty) : tyvar*ty = 
+       let rec find_var_in_ty (var:tyvar) (t:ty) : bool = 
+           match t with
+           | TyName _ -> false
+           | TyVar a -> a = var
+           | TyArrow (t1,t2) -> (find_var_in_ty var t1) || (find_var_in_ty var t2)
+           | TyTuple (t_list) ->
+                List.exists (find_var_in_ty var) t_list
+
        match cursor with
        | None -> find_cycle (Some (l_var,l_typ)) list_e (l_var,l_typ)
        | Some (c_var,c_typ) ->
            match c_typ with
            | TyVar a ->
                if c_var = a then (l_var,l_typ) 
+               else if a = l_var 
+               then 
+                   type_error "cycle found in substitution function"
                else
-                    if a = l_var 
+                    let predicate (p_v,_) = p_v = a
+                    if List.exists (predicate) list_e
                     then 
-                        type_error "cycle found in substitution function"
+                        let cursor = List.find (predicate) list_e
+                        find_cycle (Some(cursor)) list_e (l_var,l_typ)
                     else
-                        let predicate (p_v,_) = p_v = a
-                        if List.exists (predicate) list_e
-                        then 
-                            let cursor = List.find (predicate) list_e
-                            find_cycle (Some(cursor)) list_e (l_var,l_typ)
-                        else
-                            (l_var,l_typ)
-            | _ -> (l_var,l_typ)
+                        (l_var,l_typ)
+           | TyName _ -> (l_var,l_typ)
+           | TyArrow (_) | TyTuple (_) ->
+                if find_var_in_ty l_var c_typ
+                then 
+                    (l_var,l_typ)
+                else
+                   type_error "cycle found in substitution function"
 
 
     let first = apply_sub s1 s2
