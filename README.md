@@ -10,7 +10,6 @@ TinyML is a project that focuses on implementing and deploying machine learning 
 - [Usage](#usage)
 - [Examples](#examples)
 - [License](#license)
-- [Acknowledgements](#acknowledgements)
 
 ## Overview
 
